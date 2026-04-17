@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>MediFind – Admin Panel</title>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Playfair+Display:wght@700&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="../css/style.css"/>
+</head>
+<body>
+<div class="wrap">
+
+<aside class="sidebar">
+  <div class="sb-logo"><h2>💊 <em>Medi</em>Find</h2><p>Admin Panel</p></div>
+  <div class="sb-user"><div class="sb-name" id="sbName">Administrator</div><div class="sb-role" id="sbRole" style="color:#a78bfa;">ADMIN</div></div>
+  <nav class="sb-nav">
+    <div class="nav-section-lbl">Control Panel</div>
+    <button class="nav-btn active" data-sec="dash"   onclick="showSec('dash')"><span class="ni">📊</span>Overview</button>
+    <button class="nav-btn"        data-sec="users"  onclick="showSec('users')"><span class="ni">👥</span>Users</button>
+    <button class="nav-btn"        data-sec="pharma" onclick="showSec('pharma')"><span class="ni">🏪</span>Pharmacies</button>
+    <button class="nav-btn"        data-sec="meds"   onclick="showSec('meds')"><span class="ni">💊</span>Medicines</button>
+    <button class="nav-btn"        data-sec="ord"    onclick="showSec('ord')"><span class="ni">📦</span>All Orders</button>
+  </nav>
+  <div class="sb-bottom"><button class="btn-logout" onclick="logout()">🚪 Sign Out</button></div>
+</aside>
+
+<main class="main">
+  <div class="alert" id="alert"></div>
+
+  <!-- OVERVIEW -->
+  <div id="s-dash" data-sec>
+    <div class="page-hdr">
+      <div><div class="page-title">System Overview</div><div class="page-sub">Platform statistics</div></div>
+      <button class="btn btn-o btn-sm" onclick="loadDash()">↻ Refresh</button>
+    </div>
+    <div class="stats">
+      <div class="stat"><div class="stat-ico ico-b">👥</div><div><div class="stat-n" id="st-u">—</div><div class="stat-l">Users</div></div></div>
+      <div class="stat"><div class="stat-ico ico-g">🏪</div><div><div class="stat-n" id="st-p">—</div><div class="stat-l">Pharmacies</div></div></div>
+      <div class="stat"><div class="stat-ico ico-a">💊</div><div><div class="stat-n" id="st-m">—</div><div class="stat-l">Medicines</div></div></div>
+      <div class="stat"><div class="stat-ico ico-r">📦</div><div><div class="stat-n" id="st-o">—</div><div class="stat-l">Orders</div></div></div>
+    </div>
+    <div class="card mt2">
+      <div class="card-title">Quick Actions</div>
+      <div class="flex gap2" style="flex-wrap:wrap;">
+        <button class="btn btn-o" onclick="showSec('users')">👥 Manage Users</button>
+        <button class="btn btn-o" onclick="showSec('pharma')">🏪 Manage Pharmacies</button>
+        <button class="btn btn-o" onclick="showSec('ord')">📦 All Orders</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- USERS -->
+  <div id="s-users" data-sec class="sec-hidden">
+    <div class="page-hdr">
+      <div><div class="page-title">Registered Users</div><div class="page-sub">All patient accounts</div></div>
+      <div class="flex gap1 ac">
+        <input type="text" id="uSearch" class="inp btn-sm" placeholder="Search…" style="width:200px;" oninput="filterU()"/>
+        <button class="btn btn-o btn-sm" onclick="loadUsers()">↻</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>#</th><th>Name</th><th>Email</th><th>Phone</th><th>Address</th><th>Registered</th></tr></thead>
+          <tbody id="uTbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- PHARMACIES -->
+  <div id="s-pharma" data-sec class="sec-hidden">
+    <div class="page-hdr">
+      <div><div class="page-title">Pharmacies</div><div class="page-sub">Activate or deactivate accounts</div></div>
+      <button class="btn btn-o btn-sm" onclick="loadPharma()">↻ Refresh</button>
+    </div>
+    <div class="card">
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>#</th><th>Pharmacy</th><th>Owner</th><th>Email</th><th>City</th><th>Status</th><th>Action</th></tr></thead>
+          <tbody id="pTbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- MEDICINES -->
+  <div id="s-meds" data-sec class="sec-hidden">
+    <div class="page-hdr">
+      <div><div class="page-title">All Medicines</div><div class="page-sub">Across all pharmacies</div></div>
+      <input type="text" id="mSearch" class="inp btn-sm" placeholder="Filter medicines…" style="width:220px;" oninput="filterM()"/>
+    </div>
+    <div class="card">
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>#</th><th>Medicine</th><th>Brand</th><th>Pharmacy</th><th>Category</th><th>Price</th><th>Stock</th><th>Rx</th></tr></thead>
+          <tbody id="mTbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ORDERS -->
+  <div id="s-ord" data-sec class="sec-hidden">
+    <div class="page-hdr">
+      <div><div class="page-title">All Orders</div><div class="page-sub">Platform-wide order history</div></div>
+      <div class="flex gap1 ac">
+        <select id="statusF" class="inp btn-sm" style="width:160px;" onchange="filterO()">
+          <option value="">All Statuses</option>
+          <option>PENDING</option><option>CONFIRMED</option><option>REJECTED</option>
+          <option>DISPATCHED</option><option>DELIVERED</option>
+        </select>
+        <button class="btn btn-o btn-sm" onclick="loadOrders()">↻</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>#</th><th>Customer</th><th>Medicine</th><th>Pharmacy</th><th>Qty</th><th>Total</th><th>Type</th><th>Status</th><th>Date</th></tr></thead>
+          <tbody id="oTbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+</main>
+</div>
+
+<script src="../js/app.js"></script>
+<script>
+let AU=[], AP=[], AM=[], AO=[];
+
+window.onload = async function() {
+  const user = await checkAuth('ADMIN');
+  if (!user) return;
+  loadDash();
+};
+
+function afterShow(id) {
+  if (id==='dash')   loadDash();
+  if (id==='users')  loadUsers();
+  if (id==='pharma') loadPharma();
+  if (id==='meds')   loadMeds();
+  if (id==='ord')    loadOrders();
+}
+
+async function loadDash() {
+  const d = await api('/api/admin/stats');
+  if (d.error) return;
+  document.getElementById('st-u').textContent = d.users;
+  document.getElementById('st-p').textContent = d.pharmacies;
+  document.getElementById('st-m').textContent = d.medicines;
+  document.getElementById('st-o').textContent = d.orders;
+}
+
+// ── Users ─────────────────────────────────────────────
+async function loadUsers() {
+  const tb = document.getElementById('uTbody');
+  tb.innerHTML = '<tr><td colspan="6"><div class="spin-center"><div class="spin"></div></div></td></tr>';
+  const data = await api('/api/admin/users');
+  if (!Array.isArray(data)) { tb.innerHTML = `<tr><td colspan="6" class="text-dim">${data.error}</td></tr>`; return; }
+  AU = data;
+  renderU(AU);
+}
+function renderU(data) {
+  const tb = document.getElementById('uTbody');
+  if (!data.length) { tb.innerHTML = '<tr><td colspan="6"><div class="empty"><div class="ei">👥</div><p>No users found.</p></div></td></tr>'; return; }
+  tb.innerHTML = data.map((u,i) => `
+    <tr>
+      <td class="text-dim">${i+1}</td>
+      <td><strong>${u.full_name}</strong></td>
+      <td style="color:#06b6d4">${u.email}</td>
+      <td>${u.phone||'—'}</td>
+      <td class="text-dim" style="max-width:180px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${u.address||'—'}</td>
+      <td class="text-dim">${dt(u.created_at)}</td>
+    </tr>`).join('');
+}
+function filterU() {
+  const q = document.getElementById('uSearch').value.toLowerCase();
+  renderU(AU.filter(u => u.full_name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q)));
+}
+
+// ── Pharmacies ────────────────────────────────────────
+async function loadPharma() {
+  const tb = document.getElementById('pTbody');
+  tb.innerHTML = '<tr><td colspan="7"><div class="spin-center"><div class="spin"></div></div></td></tr>';
+  const data = await api('/api/admin/pharmacies');
+  if (!Array.isArray(data)) { tb.innerHTML = `<tr><td colspan="7" class="text-dim">${data.error}</td></tr>`; return; }
+  AP = data;
+  renderP(AP);
+}
+function renderP(data) {
+  const tb = document.getElementById('pTbody');
+  if (!data.length) { tb.innerHTML = '<tr><td colspan="7"><div class="empty"><div class="ei">🏪</div><p>No pharmacies found.</p></div></td></tr>'; return; }
+  tb.innerHTML = data.map((p,i) => `
+    <tr>
+      <td class="text-dim">${i+1}</td>
+      <td><strong>${p.pharmacy_name}</strong></td>
+      <td>${p.owner_name}</td>
+      <td style="color:#06b6d4">${p.email}</td>
+      <td>${p.city||'—'}</td>
+      <td>${p.is_active ? '<span class="badge b-act">Active</span>' : '<span class="badge b-ina">Inactive</span>'}</td>
+      <td>${p.is_active
+        ? `<button class="btn btn-r btn-sm" onclick="toggleP(${p.id},false)">🚫 Deactivate</button>`
+        : `<button class="btn btn-o btn-sm" onclick="toggleP(${p.id},true)">✅ Activate</button>`}</td>
+    </tr>`).join('');
+}
+async function toggleP(id, active) {
+  if (!confirm(active ? 'Activate this pharmacy?' : 'Deactivate this pharmacy?')) return;
+  const data = await api('/api/admin/pharmacy/toggle', { id, active });
+  if (data.success) { alert_(active ? '✅ Pharmacy activated.' : '🚫 Pharmacy deactivated.', 'ok', 3); loadPharma(); }
+  else alert_(data.error||'Failed.', 'err');
+}
+
+// ── Medicines ─────────────────────────────────────────
+async function loadMeds() {
+  const tb = document.getElementById('mTbody');
+  tb.innerHTML = '<tr><td colspan="8"><div class="spin-center"><div class="spin"></div></div></td></tr>';
+  const data = await api('/api/admin/medicines');
+  if (!Array.isArray(data)) { tb.innerHTML = `<tr><td colspan="8" class="text-dim">${data.error}</td></tr>`; return; }
+  AM = data;
+  renderM(AM);
+}
+function renderM(data) {
+  const tb = document.getElementById('mTbody');
+  if (!data.length) { tb.innerHTML = '<tr><td colspan="8"><div class="empty"><div class="ei">💊</div><p>No medicines found.</p></div></td></tr>'; return; }
+  tb.innerHTML = data.map((m,i) => `
+    <tr>
+      <td class="text-dim">${i+1}</td>
+      <td><strong>${m.medicine_name}</strong></td>
+      <td>${m.brand||'—'}</td>
+      <td style="color:#06b6d4">${m.pharmacy_name}</td>
+      <td>${m.category||'—'}</td>
+      <td><strong style="color:#10b981">${rupee(m.price)}</strong></td>
+      <td style="color:${m.stock_quantity<10?'#fca5a5':'#6ee7b7'};font-weight:700">${m.stock_quantity}</td>
+      <td>${m.requires_prescription?'<span class="badge b-rx">Rx</span>':'<span class="badge b-otc">OTC</span>'}</td>
+    </tr>`).join('');
+}
+function filterM() {
+  const q = document.getElementById('mSearch').value.toLowerCase();
+  renderM(AM.filter(m => m.medicine_name.toLowerCase().includes(q) || (m.brand||'').toLowerCase().includes(q) || (m.pharmacy_name||'').toLowerCase().includes(q)));
+}
+
+// ── Orders ────────────────────────────────────────────
+async function loadOrders() {
+  const tb = document.getElementById('oTbody');
+  tb.innerHTML = '<tr><td colspan="9"><div class="spin-center"><div class="spin"></div></div></td></tr>';
+  const data = await api('/api/admin/orders');
+  if (!Array.isArray(data)) { tb.innerHTML = `<tr><td colspan="9" class="text-dim">${data.error}</td></tr>`; return; }
+  AO = data;
+  renderO(AO);
+}
+function renderO(data) {
+  const tb = document.getElementById('oTbody');
+  if (!data.length) { tb.innerHTML = '<tr><td colspan="9"><div class="empty"><div class="ei">📦</div><p>No orders found.</p></div></td></tr>'; return; }
+  tb.innerHTML = data.map(o => `
+    <tr>
+      <td><strong style="color:#10b981">#${o.id}</strong></td>
+      <td>${o.user_name}</td>
+      <td><strong>${o.medicine_name}</strong><br/><span class="text-dim">${o.brand||''}</span></td>
+      <td style="color:#06b6d4">${o.pharmacy_name}</td>
+      <td>${o.quantity}</td>
+      <td><strong>${rupee(o.total_price)}</strong></td>
+      <td>${o.delivery_type==='HOME_DELIVERY'?'🚚 Home':'🏪 Pickup'}</td>
+      <td>${badge(o.status)}</td>
+      <td class="text-dim">${dt(o.order_date)}</td>
+    </tr>`).join('');
+}
+function filterO() {
+  const f = document.getElementById('statusF').value;
+  renderO(f ? AO.filter(o => o.status === f) : AO);
+}
+</script>
+</body>
+</html>

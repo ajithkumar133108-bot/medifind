@@ -1,0 +1,1228 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+    <title>MediFind – Patient Dashboard</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Playfair+Display:wght@700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="../css/style.css" />
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    />
+  </head>
+  <body>
+    <!-- Dim overlay for side panels -->
+    <div class="dim" id="dim" onclick="closePanels()"></div>
+
+    <div class="wrap">
+      <!-- ══ SIDEBAR ══ -->
+      <aside class="sidebar">
+        <div class="sb-logo">
+          <h2>💊 <em>Medi</em>Find</h2>
+          <p>Patient Portal</p>
+        </div>
+        <div class="sb-user">
+          <div class="sb-name" id="sbName">…</div>
+          <div class="sb-role" id="sbRole">USER</div>
+        </div>
+        <nav class="sb-nav">
+          <div class="nav-lbl">Menu</div>
+          <button
+            class="nb active"
+            data-sec="search"
+            onclick="showSec('search')"
+          >
+            <span class="ni">🔍</span>Search Medicine
+          </button>
+          <button class="nb" data-sec="orders" onclick="showSec('orders')">
+            <span class="ni">📦</span>My Orders
+          </button>
+          <button class="nb" data-sec="map" onclick="showSec('map')">
+            <span class="ni">🗺️</span>Pharmacy Map
+          </button>
+          <div class="nav-lbl" style="margin-top: 0.5rem">Actions</div>
+          <button class="nb" onclick="openCart()">
+            <span class="ni">🛒</span>My Cart
+            <span class="cart-count hidden" id="cartBadge">0</span>
+          </button>
+          <button class="nb" onclick="openNotif()">
+            <span class="ni">🔔</span>Notifications
+            <span class="notif-count hidden" id="notifBadge">0</span>
+          </button>
+        </nav>
+        <div class="sb-bot">
+          <button class="btn-lo" onclick="logout()">🚪 Sign Out</button>
+        </div>
+      </aside>
+
+      <!-- ══ MAIN ══ -->
+      <main class="main">
+        <div class="alert" id="alert"></div>
+
+        <!-- SEARCH -->
+        <div id="s-search" data-sec>
+          <div class="ph">
+            <div>
+              <div class="pt">Search Medicine</div>
+              <div class="ps">Find medicines at nearby pharmacies</div>
+            </div>
+          </div>
+          <div class="sbar">
+            <input
+              id="si"
+              class="inp"
+              placeholder="Type medicine name… e.g. Paracetamol, Cetirizine"
+              style="flex: 2; min-width: 200px"
+            />
+            <select id="rad" class="inp" style="max-width: 155px">
+              <option value="1">📍 1 km</option>
+              <option value="3">📍 3 km</option>
+              <option value="5" selected>📍 5 km</option>
+              <option value="10">📍 10 km</option>
+              <option value="25">📍 25 km</option>
+              <option value="50">🌐 All (50 km)</option>
+            </select>
+            <button class="btn bo" onclick="getLoc()">📍 My Location</button>
+            <button class="btn bg" onclick="doSearch()">🔍 Search</button>
+          </div>
+          <div id="locTxt" class="td mb1"></div>
+          <div id="results"></div>
+        </div>
+
+        <!-- ORDERS -->
+        <div id="s-orders" data-sec class="sh">
+          <div class="ph">
+            <div>
+              <div class="pt">My Orders</div>
+              <div class="ps">Track all your medicine orders</div>
+            </div>
+            <button class="btn bo bsm" onclick="loadOrders()">↻ Refresh</button>
+          </div>
+          <div class="card">
+            <div class="tw">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Order#</th>
+                    <th>Medicine</th>
+                    <th>Pharmacy</th>
+                    <th>Qty</th>
+                    <th>Total</th>
+                    <th>Type</th>
+                    <th>Status</th>
+                    <th>Date</th>
+                  </tr>
+                </thead>
+                <tbody id="ordTb"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- MAP -->
+        <div id="s-map" data-sec class="sh">
+          <div class="ph">
+            <div>
+              <div class="pt">Pharmacy Map</div>
+              <div class="ps">All registered pharmacies</div>
+            </div>
+          </div>
+          <div class="card" style="padding: 0; overflow: hidden">
+            <div id="map" style="height: 470px; border-radius: 14px"></div>
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <!-- ══ CART PANEL ══ -->
+    <div class="cart-panel" id="cartPanel">
+      <div class="cp-head">
+        <h3>🛒 My Cart</h3>
+        <button class="cp-close" onclick="closeCart()">✕</button>
+      </div>
+      <div class="cp-items" id="cartItems">
+        <div class="cp-empty">
+          <div class="ei">🛒</div>
+          <p>
+            Your cart is empty.<br />Search medicines and click "Add to Cart".
+          </p>
+        </div>
+      </div>
+      <div class="cp-foot">
+        <div class="cp-total">
+          <span>Total Amount</span><strong id="cartTotal">₹0.00</strong>
+        </div>
+        <div
+          class="fg"
+          id="homeAddrWrap"
+          style="display: none; margin-bottom: 0.7rem"
+        >
+          <label class="lbl">Delivery Address (for Home Delivery items)</label>
+          <textarea
+            id="globalAddr"
+            class="inp"
+            rows="2"
+            placeholder="Enter delivery address…"
+          ></textarea>
+        </div>
+        <button class="btn bg bbl" id="checkoutBtn" onclick="checkout()">
+          ✅ Place All Orders
+        </button>
+      </div>
+    </div>
+
+    <!-- ══ NOTIFICATIONS PANEL ══ -->
+    <div class="notif-panel" id="notifPanel">
+      <div class="np-head">
+        <h3>🔔 Notifications</h3>
+        <div class="flex gap1 ac">
+          <button class="btn bo bsm" onclick="markAllRead()">
+            Mark All Read
+          </button>
+          <button class="cp-close" onclick="closeNotif()">✕</button>
+        </div>
+      </div>
+      <div class="np-items" id="notifItems">
+        <div class="cp-empty">
+          <div class="ei">🔔</div>
+          <p>No notifications yet.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ LOCATION MODAL ══ -->
+    <div class="mbg" id="locMod">
+      <div class="modal" style="max-width: 500px">
+        <h3>📍 Set Your Location</h3>
+        <p style="color: #94a3b8; font-size: 0.9rem; margin-bottom: 1.2rem">
+          Choose how to set your location for accurate pharmacy distance
+          calculations
+        </p>
+
+        <!-- Current Location Status -->
+        <div
+          id="locStatus"
+          style="
+            background: rgba(16, 185, 129, 0.07);
+            border: 1px solid rgba(16, 185, 129, 0.18);
+            border-radius: 10px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            font-size: 0.9rem;
+            color: #cbd5e1;
+          "
+        >
+          <div id="locStatusTxt">No location set yet</div>
+          <div
+            id="locCoords"
+            style="font-size: 0.85rem; color: #64748b; margin-top: 0.4rem"
+          ></div>
+        </div>
+
+        <!-- Tabs for location input methods -->
+        <div
+          style="
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr 1fr;
+            gap: 0.5rem;
+            margin-bottom: 1.2rem;
+          "
+        >
+          <button
+            class="btn locTab on"
+            data-tab="manual"
+            onclick="switchLocTab('manual')"
+          >
+            ✏️ Manual
+          </button>
+          <button
+            class="btn locTab"
+            data-tab="presets"
+            onclick="switchLocTab('presets')"
+          >
+            📌 Presets
+          </button>
+          <button
+            class="btn locTab"
+            data-tab="map"
+            onclick="switchLocTab('map')"
+          >
+            🗺️ Map
+          </button>
+          <button
+            class="btn locTab"
+            data-tab="gps"
+            onclick="switchLocTab('gps')"
+          >
+            📡 GPS
+          </button>
+        </div>
+
+        <!-- Manual Input -->
+        <div id="locTab-manual" class="locTabContent" style="display: block">
+          <div class="fg">
+            <label class="lbl">Latitude (e.g., 13.0827)</label
+            ><input
+              type="number"
+              id="manLat"
+              class="inp"
+              step="0.0001"
+              placeholder="13.0827"
+            />
+          </div>
+          <div class="fg">
+            <label class="lbl">Longitude (e.g., 80.2707)</label
+            ><input
+              type="number"
+              id="manLng"
+              class="inp"
+              step="0.0001"
+              placeholder="80.2707"
+            />
+          </div>
+          <button
+            class="btn bg"
+            style="width: 100%"
+            onclick="setLocationManual()"
+          >
+            ✓ Set Coordinates
+          </button>
+        </div>
+
+        <!-- Preset Locations -->
+        <div id="locTab-presets" class="locTabContent" style="display: none">
+          <p style="color: #94a3b8; font-size: 0.85rem; margin-bottom: 0.8rem">
+            Quick select from pharmacy locations
+          </p>
+          <div style="display: grid; gap: 0.5rem">
+            <button
+              class="btn bo locPreset"
+              onclick="setLocationPreset(13.0827, 80.2707, 'MedPlus Pharmacy')"
+            >
+              🏪 MedPlus Pharmacy (13.0827, 80.2707)
+            </button>
+            <button
+              class="btn bo locPreset"
+              onclick="setLocationPreset(13.0418, 80.2341, 'Apollo Pharmacy')"
+            >
+              🏪 Apollo Pharmacy (13.0418, 80.2341)
+            </button>
+            <button
+              class="btn bo locPreset"
+              onclick="setLocationPreset(13.0067, 80.2554, 'LifeCare Medical')"
+            >
+              🏥 LifeCare Medical (13.0067, 80.2554)
+            </button>
+            <button
+              class="btn bo locPreset"
+              onclick="
+                setLocationPreset(12.9783, 80.2209, 'HealthPoint Pharma')
+              "
+            >
+              💊 HealthPoint Pharma (12.9783, 80.2209)
+            </button>
+            <button
+              class="btn bo locPreset"
+              onclick="setLocationPreset(12.9249, 80.1, 'CureMart Pharmacy')"
+            >
+              🏪 CureMart Pharmacy (12.9249, 80.1000)
+            </button>
+            <button
+              class="btn bo locPreset"
+              onclick="setLocationPreset(13.05, 80.25, 'Center Point (Test)')"
+            >
+              📍 Center Point - Test Location (13.0500, 80.2500)
+            </button>
+          </div>
+        </div>
+
+        <!-- Map-Based Selection -->
+        <div id="locTab-map" class="locTabContent" style="display: none">
+          <p style="color: #94a3b8; font-size: 0.85rem; margin-bottom: 0.8rem">
+            Click on the map to set your location or click on a pharmacy
+          </p>
+          <div
+            id="locMapContainer"
+            style="
+              height: 300px;
+              border-radius: 8px;
+              border: 1px solid rgba(16, 185, 129, 0.18);
+              overflow: hidden;
+              margin-bottom: 1rem;
+            "
+          ></div>
+          <p
+            id="mapClickHint"
+            style="
+              color: #64748b;
+              font-size: 0.8rem;
+              background: rgba(15, 23, 42, 0.5);
+              padding: 0.6rem;
+              border-radius: 6px;
+              text-align: center;
+            "
+          >
+            💡 Tip: Click on the map to set your location
+          </p>
+        </div>
+
+        <!-- GPS Detection -->
+        <div id="locTab-gps" class="locTabContent" style="display: none">
+          <p style="color: #94a3b8; font-size: 0.85rem; margin-bottom: 1rem">
+            Get your exact location from device GPS
+          </p>
+          <div
+            id="gpsStatus"
+            style="
+              background: rgba(255, 255, 255, 0.05);
+              border: 1px solid rgba(255, 255, 255, 0.1);
+              border-radius: 8px;
+              padding: 0.8rem;
+              margin-bottom: 1rem;
+              text-align: center;
+              color: #cbd5e1;
+              font-size: 0.9rem;
+            "
+          >
+            Click button to enable GPS
+          </div>
+          <button class="btn bg" style="width: 100%" onclick="getGPSLocation()">
+            📡 Enable GPS & Detect
+          </button>
+          <p style="color: #64748b; font-size: 0.8rem; margin-top: 0.8rem">
+            ⚠️ Note: Allow location permission in browser. Works best outdoors
+            with GPS enabled.
+          </p>
+        </div>
+
+        <!-- Action Buttons -->
+        <div
+          style="
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.5rem;
+            margin-top: 1.5rem;
+          "
+        >
+          <button class="btn bo" onclick="closeM('locMod')">Cancel</button>
+          <button class="btn bg" onclick="confirmLocation()">
+            ✓ Continue Search
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ BOOK MODAL (for direct booking) ══ -->
+    <div class="mbg" id="bookMod">
+      <div class="modal">
+        <h3>🛒 Book Medicine</h3>
+        <div
+          id="bookInfo"
+          style="
+            background: rgba(16, 185, 129, 0.07);
+            border: 1px solid rgba(16, 185, 129, 0.18);
+            border-radius: 10px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            font-size: 0.86rem;
+            color: #cbd5e1;
+            line-height: 1.75;
+          "
+        ></div>
+        <div class="fg">
+          <label class="lbl">Quantity</label
+          ><input type="number" id="bQty" class="inp" value="1" min="1" />
+        </div>
+        <div class="fg">
+          <label class="lbl">Delivery Type</label>
+          <select id="bType" class="inp" onchange="toggleBAddr()">
+            <option value="PICKUP">🏪 Pharmacy Pickup</option>
+            <option value="HOME_DELIVERY">🚚 Home Delivery</option>
+          </select>
+        </div>
+        <div class="fg" id="bAddrGrp" style="display: none">
+          <label class="lbl">Delivery Address *</label>
+          <textarea
+            id="bAddr"
+            class="inp"
+            rows="2"
+            placeholder="Enter full delivery address…"
+          ></textarea>
+        </div>
+        <div
+          id="bTotal"
+          style="
+            font-size: 1.1rem;
+            font-weight: 800;
+            color: #10b981;
+            margin-bottom: 0.5rem;
+          "
+        ></div>
+        <div class="mf">
+          <button class="btn bo" onclick="closeM('bookMod')">Cancel</button>
+          <button class="btn bo" onclick="addToCartFromModal()">
+            🛒 Add to Cart
+          </button>
+          <button class="btn bg" id="bookBtn" onclick="directBook()">
+            ⚡ Order Now
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="../js/app.js"></script>
+    <script>
+      // ═══ STATE ═══════════════════════════════════════════════
+      let uLat = 0,
+        uLng = 0,
+        selMed = null,
+        leafMap = null;
+      let cart = []; // [{ med, quantity, deliveryType, deliveryAddress }]
+
+      // ═══ INIT ════════════════════════════════════════════════
+      window.onload = async function () {
+        const user = await checkAuth("USER");
+        if (!user) return;
+        loadSavedLocation();
+        updateLocStatus();
+        loadCart();
+        pollNotifications();
+        setInterval(pollNotifications, 30000); // check every 30s
+      };
+
+      function afterShow(id) {
+        if (id === "orders") loadOrders();
+        if (id === "map") initMap();
+      }
+
+      // ═══ LOCATION ════════════════════════════════════════════
+      let locMapPicker = null;
+
+      function getLoc() {
+        // Open location modal instead of auto-detecting
+        updateLocStatus();
+        openM("locMod");
+      }
+
+      function updateLocStatus() {
+        const statusEl = document.getElementById("locStatus");
+        const statusTxt = document.getElementById("locStatusTxt");
+        const coords = document.getElementById("locCoords");
+
+        if (uLat && uLng) {
+          statusTxt.textContent = "✅ Location Set";
+          statusTxt.style.color = "#6ee7b7";
+          coords.innerHTML = `Lat: <strong>${uLat.toFixed(6)}</strong>, Lng: <strong>${uLng.toFixed(6)}</strong>`;
+        } else {
+          statusTxt.textContent = "❌ No location set";
+          statusTxt.style.color = "#fca5a5";
+          coords.textContent = "Set location to calculate pharmacy distances";
+        }
+      }
+
+      function switchLocTab(tab) {
+        document
+          .querySelectorAll(".locTabContent")
+          .forEach((el) => (el.style.display = "none"));
+        document
+          .querySelectorAll(".locTab")
+          .forEach((el) => el.classList.remove("on"));
+        document.getElementById("locTab-" + tab).style.display = "block";
+        document.querySelector('[data-tab="' + tab + '"]').classList.add("on");
+
+        // Initialize map when switching to map tab
+        if (tab === "map" && !window.locMapInstance) {
+          setTimeout(initLocMap, 100);
+        }
+      }
+
+      function setLocationManual() {
+        const lat = parseFloat(document.getElementById("manLat").value);
+        const lng = parseFloat(document.getElementById("manLng").value);
+
+        if (isNaN(lat) || isNaN(lng)) {
+          alert_("Please enter valid latitude and longitude values.", "err");
+          return;
+        }
+
+        if (lat < -90 || lat > 90) {
+          alert_("Latitude must be between -90 and 90.", "err");
+          return;
+        }
+
+        if (lng < -180 || lng > 180) {
+          alert_("Longitude must be between -180 and 180.", "err");
+          return;
+        }
+
+        uLat = lat;
+        uLng = lng;
+        localStorage.setItem(
+          "mf_user_location",
+          JSON.stringify({ lat: uLat, lng: uLng }),
+        );
+        updateLocStatus();
+        alert_(
+          `✅ Location set to ${uLat.toFixed(4)}, ${uLng.toFixed(4)}`,
+          "ok",
+          2,
+        );
+      }
+
+      function setLocationPreset(lat, lng, name) {
+        uLat = lat;
+        uLng = lng;
+        localStorage.setItem(
+          "mf_user_location",
+          JSON.stringify({ lat: uLat, lng: uLng }),
+        );
+        updateLocStatus();
+        alert_(`✅ Using ${name} location`, "ok", 2);
+      }
+
+      function getGPSLocation() {
+        const gpsStatus = document.getElementById("gpsStatus");
+        gpsStatus.textContent = "📡 Requesting GPS access...";
+
+        if (!navigator.geolocation) {
+          gpsStatus.textContent =
+            "❌ Geolocation not supported in your browser";
+          return;
+        }
+
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            uLat = pos.coords.latitude;
+            uLng = pos.coords.longitude;
+            localStorage.setItem(
+              "mf_user_location",
+              JSON.stringify({ lat: uLat, lng: uLng }),
+            );
+            updateLocStatus();
+            gpsStatus.innerHTML = `✅ Location detected!<br/>Lat: ${uLat.toFixed(6)}, Lng: ${uLng.toFixed(6)}<br/>Accuracy: ±${Math.round(pos.coords.accuracy)}m`;
+            alert_(
+              `✅ GPS location: ${uLat.toFixed(4)}, ${uLng.toFixed(4)}`,
+              "ok",
+              3,
+            );
+          },
+          (err) => {
+            let errMsg = "GPS access denied or unavailable";
+            if (err.code === 1)
+              errMsg =
+                "❌ Permission denied. Enable location in browser settings.";
+            else if (err.code === 2)
+              errMsg = "⚠️ Position unavailable. Try outdoors with clear sky.";
+            else if (err.code === 3) errMsg = "⏱️ Request timeout. Try again.";
+            gpsStatus.textContent = errMsg;
+            alert_(errMsg, "warn", 3);
+          },
+          { timeout: 10000, enableHighAccuracy: true },
+        );
+      }
+
+      function initLocMap() {
+        if (window.locMapInstance) return;
+
+        const container = document.getElementById("locMapContainer");
+        window.locMapInstance = L.map(container).setView(
+          [13.0827, 80.2707],
+          12,
+        );
+
+        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+          attribution: "© OpenStreetMap",
+          maxZoom: 19,
+        }).addTo(window.locMapInstance);
+
+        // Pharmacy locations
+        const pharmacies = [
+          { lat: 13.0827, lng: 80.2707, name: "MedPlus Pharmacy", icon: "🏪" },
+          { lat: 13.0418, lng: 80.2341, name: "Apollo Pharmacy", icon: "🏪" },
+          { lat: 13.0067, lng: 80.2554, name: "LifeCare Medical", icon: "🏥" },
+          {
+            lat: 12.9783,
+            lng: 80.2209,
+            name: "HealthPoint Pharma",
+            icon: "💊",
+          },
+          { lat: 12.9249, lng: 80.1, name: "CureMart Pharmacy", icon: "🏪" },
+          { lat: 13.05, lng: 80.25, name: "Center Point (Test)", icon: "📍" },
+        ];
+
+        // Add pharmacy markers
+        pharmacies.forEach((pharmacy) => {
+          const marker = L.marker([pharmacy.lat, pharmacy.lng], {
+            icon: L.divIcon({
+              html: `<div style="font-size: 24px; cursor: pointer; filter: drop-shadow(0 0 2px rgba(0,0,0,0.3))">${pharmacy.icon}</div>`,
+              iconSize: [32, 32],
+              className: "pharmacy-marker",
+            }),
+          })
+            .bindPopup(
+              `<strong>${pharmacy.name}</strong><br/>Lat: ${pharmacy.lat.toFixed(4)}<br/>Lng: ${pharmacy.lng.toFixed(4)}<br/><button class="btn bg" style="width: 100%; margin-top: 8px" onclick="setLocationFromMap(${pharmacy.lat}, ${pharmacy.lng}, '${pharmacy.name}')">Select</button>`,
+              { maxWidth: 200 },
+            )
+            .addTo(window.locMapInstance);
+        });
+
+        // Handle map clicks
+        window.locMapInstance.on("click", (e) => {
+          setLocationFromMap(e.latlng.lat, e.latlng.lng, "Custom Location");
+        });
+
+        // If location already set, show marker
+        if (uLat && uLng) {
+          L.marker([uLat, uLng], {
+            icon: L.divIcon({
+              html: `<div style="font-size: 28px">📍</div>`,
+              iconSize: [32, 32],
+              className: "user-marker",
+            }),
+          }).addTo(window.locMapInstance);
+          window.locMapInstance.setView([uLat, uLng], 12);
+        }
+
+        // Invalidate map size after a delay to fix rendering
+        setTimeout(() => window.locMapInstance?.invalidateSize(), 150);
+      }
+
+      function setLocationFromMap(lat, lng, name) {
+        uLat = lat;
+        uLng = lng;
+        localStorage.setItem(
+          "mf_user_location",
+          JSON.stringify({ lat: uLat, lng: uLng }),
+        );
+        updateLocStatus();
+        alert_(`✅ Location set from map: ${name}`, "ok", 2);
+
+        // Update map marker
+        if (window.locMapInstance) {
+          window.locMapInstance.setView([lat, lng], 12);
+          // Remove previous user marker and add new one
+          window.locMapInstance.eachLayer((layer) => {
+            if (
+              layer instanceof L.Marker &&
+              layer.options.icon?.options.className === "user-marker"
+            ) {
+              window.locMapInstance.removeLayer(layer);
+            }
+          });
+          L.marker([lat, lng], {
+            icon: L.divIcon({
+              html: `<div style="font-size: 28px">📍</div>`,
+              iconSize: [32, 32],
+              className: "user-marker",
+            }),
+          }).addTo(window.locMapInstance);
+        }
+      }
+
+      function confirmLocation() {
+        if (!uLat || !uLng) {
+          alert_("Please set your location first.", "warn");
+          return;
+        }
+        closeM("locMod");
+        doSearch();
+      }
+
+      function loadSavedLocation() {
+        try {
+          const saved = localStorage.getItem("mf_user_location");
+          if (saved) {
+            const loc = JSON.parse(saved);
+            uLat = loc.lat;
+            uLng = loc.lng;
+          }
+        } catch {}
+      }
+
+      // ═══ SEARCH ══════════════════════════════════════════════
+      async function doSearch() {
+        const name = document.getElementById("si").value.trim();
+        if (!name) {
+          alert_("Please enter a medicine name.", "warn");
+          return;
+        }
+        const rad = document.getElementById("rad").value;
+        const res = document.getElementById("results");
+        res.innerHTML = '<div class="sc"><div class="spin"></div></div>';
+
+        let url = `/api/search?medicine=${encodeURIComponent(name)}&radius=${rad}`;
+        if (uLat && uLng) url += `&lat=${uLat}&lng=${uLng}`;
+
+        let data;
+        try {
+          data = await api(url);
+        } catch {
+          res.innerHTML =
+            '<div class="alert aerr show">Cannot reach server. Run: node server.js</div>';
+          return;
+        }
+
+        if (data.error) {
+          res.innerHTML = `<div class="alert aerr show">${data.error}</div>`;
+          return;
+        }
+        if (!data.results || !data.results.length) {
+          res.innerHTML = `<div class="alert awn show">No results for "<strong>${name}</strong>" within ${rad} km. Try a bigger radius.</div>`;
+          return;
+        }
+
+        res.innerHTML = `<p class="td mb1">Found <strong style="color:#f8fafc">${data.count}</strong> result(s) for "<strong style="color:#10b981">${name}</strong>"</p>`;
+        const grid = document.createElement("div");
+        grid.className = "mg";
+
+        data.results.forEach((m) => {
+          const sc =
+            m.stock_quantity > 20
+              ? "#6ee7b7"
+              : m.stock_quantity > 5
+                ? "#fde68a"
+                : "#fca5a5";
+          const dist =
+            m.distanceKm > 0
+              ? `<div class="mdist">📍 ${m.distanceKm} km away</div>`
+              : "";
+          const rx = m.requires_prescription
+            ? '<span class="badge brx">Rx</span>'
+            : '<span class="badge botc">OTC</span>';
+          const del = m.delivery_available
+            ? '<span class="badge" style="background:rgba(6,182,212,.1);color:#67e8f9;">🚚 Delivery</span>'
+            : "";
+          const c = document.createElement("div");
+          c.className = "mc";
+          c.innerHTML = `
+      <div class="mn">${m.medicine_name}</div>
+      <div class="mb2">${m.brand || "—"} · ${m.category || ""}</div>
+      <div class="mp">${rupee(m.price)} <small>/ ${m.unit}</small></div>
+      <div class="mi" style="color:${sc}">📦 Stock: ${m.stock_quantity} ${m.unit}s</div>
+      <div class="mtags mt1">${rx} ${del}</div>
+      <div class="mpharm mt1">🏪 ${m.pharmacy_name}</div>
+      <div class="madr">📌 ${m.pharmacy_address}</div>
+      ${dist}
+      <div class="mc-actions">
+        <button class="btn bo" onclick='openBook(${JSON.stringify(m).replace(/"/g, "&quot;")})'>🛒 Add to Cart</button>
+        <button class="btn bg" onclick='quickAdd(${JSON.stringify(m).replace(/"/g, "&quot;")})'>⚡ Buy Now</button>
+      </div>`;
+          grid.appendChild(c);
+        });
+        res.appendChild(grid);
+      }
+      document.addEventListener("keydown", (e) => {
+        if (
+          e.key === "Enter" &&
+          document.getElementById("si") === document.activeElement
+        )
+          doSearch();
+      });
+
+      // ═══ BOOK MODAL ══════════════════════════════════════════
+      function openBook(m) {
+        selMed = m;
+        document.getElementById("bookInfo").innerHTML =
+          `<strong style="font-size:1rem;color:#f8fafc">${m.medicine_name}</strong> (${m.brand || "—"})<br/>
+    💊 ${m.unit} | 💰 ${rupee(m.price)} each<br/>
+    🏪 <span style="color:#06b6d4">${m.pharmacy_name}</span><br/>
+    📦 Available: <span style="color:#6ee7b7;font-weight:700">${m.stock_quantity} ${m.unit}s</span>`;
+        document.getElementById("bQty").value = 1;
+        document.getElementById("bQty").max = m.stock_quantity;
+        document.getElementById("bType").value = "PICKUP";
+        document.getElementById("bAddrGrp").style.display = "none";
+        document.getElementById("bAddr").value = "";
+        calcBTotal();
+        document.getElementById("bQty").oninput = calcBTotal;
+        openM("bookMod");
+      }
+
+      function quickAdd(m) {
+        // Add to cart with default PICKUP and open cart
+        const existing = cart.find((i) => i.med.id === m.id);
+        if (existing) {
+          existing.quantity = Math.min(existing.quantity + 1, m.stock_quantity);
+        } else {
+          cart.push({
+            med: m,
+            quantity: 1,
+            deliveryType: "PICKUP",
+            deliveryAddress: "",
+          });
+        }
+        saveCart();
+        renderCart();
+        openCart();
+        alert_(`✅ ${m.medicine_name} added to cart!`, "ok", 3);
+      }
+
+      function toggleBAddr() {
+        document.getElementById("bAddrGrp").style.display =
+          document.getElementById("bType").value === "HOME_DELIVERY"
+            ? "block"
+            : "none";
+      }
+      function calcBTotal() {
+        if (!selMed) return;
+        const qty = parseInt(document.getElementById("bQty").value) || 1;
+        document.getElementById("bTotal").textContent =
+          `Total: ${rupee(selMed.price * qty)}`;
+      }
+
+      function addToCartFromModal() {
+        if (!selMed) return;
+        const qty = parseInt(document.getElementById("bQty").value) || 1;
+        const type = document.getElementById("bType").value;
+        const addr = document.getElementById("bAddr").value.trim();
+        if (type === "HOME_DELIVERY" && !addr) {
+          alert_("Enter delivery address.", "err");
+          return;
+        }
+        const existing = cart.find((i) => i.med.id === selMed.id);
+        if (existing) {
+          existing.quantity = Math.min(
+            existing.quantity + qty,
+            selMed.stock_quantity,
+          );
+          existing.deliveryType = type;
+          existing.deliveryAddress = addr;
+        } else {
+          cart.push({
+            med: selMed,
+            quantity: qty,
+            deliveryType: type,
+            deliveryAddress: addr,
+          });
+        }
+        saveCart();
+        renderCart();
+        closeM("bookMod");
+        alert_(`✅ ${selMed.medicine_name} added to cart!`, "ok", 3);
+      }
+
+      async function directBook() {
+        if (!selMed) return;
+        const qty = parseInt(document.getElementById("bQty").value) || 1;
+        const type = document.getElementById("bType").value;
+        const addr = document.getElementById("bAddr").value.trim();
+        if (qty < 1 || qty > selMed.stock_quantity) {
+          alert_("Invalid quantity.", "err");
+          return;
+        }
+        if (type === "HOME_DELIVERY" && !addr) {
+          alert_("Enter delivery address.", "err");
+          return;
+        }
+        const btn = document.getElementById("bookBtn");
+        btn.disabled = true;
+        btn.textContent = "Placing…";
+        const data = await api("/api/cart/checkout", {
+          items: [
+            {
+              medicineId: selMed.id,
+              quantity: qty,
+              deliveryType: type,
+              deliveryAddress: addr,
+            },
+          ],
+        });
+        btn.disabled = false;
+        btn.textContent = "⚡ Order Now";
+        if (data.success && data.placed.length) {
+          closeM("bookMod");
+          alert_(
+            `✅ Order #${data.placed[0].orderId} placed! Total: ${rupee(data.placed[0].total)}`,
+            "ok",
+            7,
+          );
+          selMed = null;
+        } else {
+          const err =
+            data.failed && data.failed[0]
+              ? data.failed[0].reason
+              : data.error || "Order failed.";
+          alert_(err, "err");
+        }
+      }
+
+      // ═══ CART ════════════════════════════════════════════════
+      function saveCart() {
+        try {
+          localStorage.setItem("mf_cart", JSON.stringify(cart));
+        } catch {}
+      }
+      function loadCart() {
+        try {
+          const s = localStorage.getItem("mf_cart");
+          if (s) cart = JSON.parse(s);
+        } catch {
+          cart = [];
+        }
+        renderCart();
+      }
+
+      function renderCart() {
+        const el = document.getElementById("cartItems");
+        const badge = document.getElementById("cartBadge");
+        const total_items = cart.reduce((s, i) => s + i.quantity, 0);
+
+        // Badge
+        badge.textContent = total_items;
+        badge.classList.toggle("hidden", total_items === 0);
+
+        if (!cart.length) {
+          el.innerHTML =
+            '<div class="cp-empty"><div class="ei">🛒</div><p>Your cart is empty.<br/>Search medicines and add to cart.</p></div>';
+          document.getElementById("cartTotal").textContent = "₹0.00";
+          document.getElementById("homeAddrWrap").style.display = "none";
+          return;
+        }
+
+        let hasHome = cart.some((i) => i.deliveryType === "HOME_DELIVERY");
+        document.getElementById("homeAddrWrap").style.display = hasHome
+          ? "block"
+          : "none";
+
+        const total = cart.reduce((s, i) => s + i.med.price * i.quantity, 0);
+        document.getElementById("cartTotal").textContent = rupee(total);
+
+        el.innerHTML = cart
+          .map(
+            (item, idx) => `
+    <div class="cart-item">
+      <div class="ci-name">${item.med.medicine_name}</div>
+      <div class="ci-pharm">🏪 ${item.med.pharmacy_name}</div>
+      <div class="ci-row">
+        <div class="ci-qty">
+          <button class="qty-btn" onclick="changeQty(${idx},-1)">−</button>
+          <span class="ci-qnum">${item.quantity}</span>
+          <button class="qty-btn" onclick="changeQty(${idx},1)">+</button>
+        </div>
+        <span class="ci-price">${rupee(item.med.price * item.quantity)}</span>
+        <button class="ci-del" onclick="removeFromCart(${idx})" title="Remove">🗑️</button>
+      </div>
+      <div class="ci-delivery">
+        <select onchange="setDelivery(${idx},this.value)" style="width:100%;padding:.4rem .7rem;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:6px;color:#f8fafc;font-size:.78rem;font-family:'Outfit',sans-serif;outline:none;">
+          <option value="PICKUP"       ${item.deliveryType === "PICKUP" ? "selected" : ""}>🏪 Pickup</option>
+          <option value="HOME_DELIVERY"${item.deliveryType === "HOME_DELIVERY" ? "selected" : ""}>🚚 Home Delivery</option>
+        </select>
+      </div>
+    </div>`,
+          )
+          .join("");
+      }
+
+      function changeQty(idx, delta) {
+        cart[idx].quantity = Math.max(
+          1,
+          Math.min(cart[idx].quantity + delta, cart[idx].med.stock_quantity),
+        );
+        saveCart();
+        renderCart();
+      }
+      function removeFromCart(idx) {
+        cart.splice(idx, 1);
+        saveCart();
+        renderCart();
+      }
+      function setDelivery(idx, val) {
+        cart[idx].deliveryType = val;
+        saveCart();
+        renderCart();
+      }
+
+      function openCart() {
+        document.getElementById("cartPanel").classList.add("open");
+        document.getElementById("dim").classList.add("show");
+      }
+      function closeCart() {
+        document.getElementById("cartPanel").classList.remove("open");
+        document.getElementById("dim").classList.remove("show");
+      }
+      function closePanels() {
+        closeCart();
+        closeNotif();
+      }
+
+      async function checkout() {
+        if (!cart.length) {
+          alert_("Cart is empty.", "warn");
+          return;
+        }
+        const globalAddr = document.getElementById("globalAddr").value.trim();
+        const hasHome = cart.some((i) => i.deliveryType === "HOME_DELIVERY");
+        if (hasHome && !globalAddr) {
+          alert_("Enter delivery address for home delivery items.", "err");
+          return;
+        }
+
+        const items = cart.map((i) => ({
+          medicineId: i.med.id,
+          quantity: i.quantity,
+          deliveryType: i.deliveryType,
+          deliveryAddress: i.deliveryType === "HOME_DELIVERY" ? globalAddr : "",
+        }));
+
+        const btn = document.getElementById("checkoutBtn");
+        btn.disabled = true;
+        btn.textContent = "Placing orders…";
+
+        const data = await api("/api/cart/checkout", { items });
+
+        btn.disabled = false;
+        btn.textContent = "✅ Place All Orders";
+
+        if (data.success) {
+          const placed = data.placed || [],
+            failed = data.failed || [];
+          if (placed.length) {
+            cart = cart.filter(
+              (i) =>
+                !placed.some((p) => p.medicineName === i.med.medicine_name),
+            );
+            saveCart();
+            renderCart();
+            closeCart();
+            alert_(
+              `✅ ${placed.length} order(s) placed! Check "My Orders" for status.`,
+              "ok",
+              8,
+            );
+          }
+          if (failed.length) {
+            alert_(
+              `⚠️ ${failed.length} item(s) failed: ${failed.map((f) => f.reason || f.name).join(", ")}`,
+              "warn",
+              0,
+            );
+          }
+        } else {
+          alert_(data.error || "Checkout failed.", "err");
+        }
+      }
+
+      // ═══ ORDERS ══════════════════════════════════════════════
+      async function loadOrders() {
+        const tb = document.getElementById("ordTb");
+        tb.innerHTML =
+          '<tr><td colspan="8"><div class="sc"><div class="spin"></div></div></td></tr>';
+        const data = await api("/api/orders/user");
+        if (!Array.isArray(data)) {
+          tb.innerHTML = `<tr><td colspan="8" class="td">${data.error || "Failed"}</td></tr>`;
+          return;
+        }
+        if (!data.length) {
+          tb.innerHTML =
+            '<tr><td colspan="8"><div class="empty"><div class="ei">📦</div><p>No orders yet.</p></div></td></tr>';
+          return;
+        }
+        tb.innerHTML = data
+          .map(
+            (o) => `
+    <tr>
+      <td><strong style="color:#10b981">#${o.id}</strong></td>
+      <td><strong>${o.medicine_name}</strong><br/><span class="td">${o.brand || ""}</span></td>
+      <td>${o.pharmacy_name}<br/><span class="td">${o.pharmacy_phone || ""}</span></td>
+      <td>${o.quantity} ${o.unit}</td>
+      <td><strong>${rupee(o.total_price)}</strong></td>
+      <td>${o.delivery_type === "HOME_DELIVERY" ? "🚚 Home" : "🏪 Pickup"}</td>
+      <td>${badge(o.status)}</td>
+      <td><span class="td">${dt(o.order_date)}</span></td>
+    </tr>`,
+          )
+          .join("");
+      }
+
+      // ═══ NOTIFICATIONS ════════════════════════════════════════
+      async function pollNotifications() {
+        try {
+          const data = await api("/api/notifications");
+          if (!Array.isArray(data)) return;
+          const unread = data.filter((n) => !n.is_read).length;
+          const badge = document.getElementById("notifBadge");
+          badge.textContent = unread;
+          badge.classList.toggle("hidden", unread === 0);
+        } catch {}
+      }
+
+      async function openNotif() {
+        document.getElementById("notifPanel").classList.add("open");
+        document.getElementById("dim").classList.add("show");
+        const el = document.getElementById("notifItems");
+        el.innerHTML = '<div class="sc"><div class="spin"></div></div>';
+        const data = await api("/api/notifications");
+        if (!Array.isArray(data) || !data.length) {
+          el.innerHTML =
+            '<div class="cp-empty"><div class="ei">🔔</div><p>No notifications yet.</p></div>';
+          return;
+        }
+        el.innerHTML = data
+          .map(
+            (n) => `
+    <div class="ni-card ${n.is_read ? "" : "unread"}" onclick="markRead(${n.id},this)">
+      <div class="ni-msg">${n.message}</div>
+      <div class="ni-time">${dt(n.created_at)}</div>
+    </div>`,
+          )
+          .join("");
+        pollNotifications();
+      }
+      function closeNotif() {
+        document.getElementById("notifPanel").classList.remove("open");
+        document.getElementById("dim").classList.remove("show");
+      }
+      async function markRead(id, el) {
+        await api("/api/notifications/read", { id });
+        el.classList.remove("unread");
+        pollNotifications();
+      }
+      async function markAllRead() {
+        await api("/api/notifications/readall", {});
+        document
+          .querySelectorAll(".ni-card.unread")
+          .forEach((c) => c.classList.remove("unread"));
+        pollNotifications();
+      }
+
+      // ═══ MAP ════════════════════════════════════════════════
+      async function initMap() {
+        if (leafMap) {
+          leafMap.invalidateSize();
+          return;
+        }
+        leafMap = L.map("map").setView([uLat || 13.0827, uLng || 80.2707], 12);
+        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+          attribution: "© OpenStreetMap",
+        }).addTo(leafMap);
+        if (uLat && uLng)
+          L.circleMarker([uLat, uLng], {
+            radius: 8,
+            color: "#10b981",
+            fillColor: "#10b981",
+            fillOpacity: 1,
+          })
+            .addTo(leafMap)
+            .bindPopup("<b>📍 You are here</b>")
+            .openPopup();
+        try {
+          const d = await api("/api/search?medicine=a&radius=100");
+          const seen = new Set();
+          (d.results || []).forEach((m) => {
+            if (seen.has(m.pharmacy_id)) return;
+            seen.add(m.pharmacy_id);
+            L.marker([+m.plat, +m.plng])
+              .addTo(leafMap)
+              .bindPopup(
+                `<b>🏪 ${m.pharmacy_name}</b><br/>${m.pharmacy_address}<br/>📞 ${m.pharmacy_phone || "—"}`,
+              );
+          });
+        } catch {}
+      }
+    </script>
+  </body>
+</html>

@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>MediFind – Register</title>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Playfair+Display:wght@700&display=swap" rel="stylesheet"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Outfit',sans-serif;background:#060d1a;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:2rem;}
+.box{background:#0f1e35;border:1px solid rgba(255,255,255,.08);border-radius:20px;padding:2.5rem;width:100%;max-width:560px;box-shadow:0 40px 80px rgba(0,0,0,.5);}
+.logo{text-align:center;margin-bottom:2rem;}
+.logo h2{font-family:'Playfair Display',serif;color:#f8fafc;font-size:1.4rem;margin-top:.4rem;}
+.logo p{color:#64748b;font-size:.82rem;}
+.tabs{display:grid;grid-template-columns:1fr 1fr;gap:3px;background:rgba(0,0,0,.3);border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:3px;margin-bottom:1.8rem;}
+.tab{padding:.6rem;border:none;background:transparent;color:#64748b;font-family:'Outfit',sans-serif;font-size:.86rem;font-weight:600;border-radius:8px;cursor:pointer;transition:.15s;}
+.tab:hover{color:#cbd5e1;}
+.tab.on{background:#10b981;color:#fff;}
+.f{margin-bottom:.95rem;}
+.f label{display:block;font-size:.76rem;font-weight:600;color:#94a3b8;margin-bottom:.35rem;}
+.f input,.f select,.f textarea{width:100%;padding:.7rem 1rem;background:rgba(255,255,255,.04);border:1.5px solid rgba(255,255,255,.1);border-radius:10px;color:#f8fafc;font-family:'Outfit',sans-serif;font-size:.9rem;outline:none;transition:.2s;}
+.f input:focus,.f select:focus,.f textarea:focus{border-color:#10b981;}
+.f input::placeholder,.f textarea::placeholder{color:#334155;}
+.f textarea{resize:vertical;min-height:70px;}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:.9rem;}
+@media(max-width:500px){.row{grid-template-columns:1fr;}}
+.btn-reg{width:100%;padding:.85rem;background:linear-gradient(135deg,#10b981,#059669);border:none;border-radius:10px;color:#fff;font-family:'Outfit',sans-serif;font-size:.98rem;font-weight:700;cursor:pointer;transition:.2s;margin-top:.5rem;}
+.btn-reg:hover{transform:translateY(-1px);box-shadow:0 8px 24px rgba(16,185,129,.35);}
+.btn-reg:disabled{opacity:.6;cursor:not-allowed;transform:none;}
+.msg{padding:.75rem 1rem;border-radius:8px;font-size:.86rem;font-weight:500;margin-bottom:1rem;display:none;}
+.msg.err{background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.3);color:#fca5a5;display:block;}
+.msg.ok {background:rgba(16,185,129,.12);border:1px solid rgba(16,185,129,.3);color:#6ee7b7;display:block;}
+.footer{text-align:center;margin-top:1.2rem;font-size:.84rem;color:#64748b;}
+.footer a{color:#34d399;font-weight:600;text-decoration:none;}
+.loc-btn{display:inline-flex;align-items:center;gap:.4rem;padding:.5rem 1rem;background:transparent;border:1px solid rgba(16,185,129,.3);border-radius:8px;color:#34d399;font-family:'Outfit',sans-serif;font-size:.8rem;font-weight:600;cursor:pointer;transition:.15s;}
+.loc-btn:hover{background:rgba(16,185,129,.1);}
+.loc-txt{font-size:.76rem;color:#64748b;margin-left:.5rem;}
+</style>
+</head>
+<body>
+<div class="box">
+  <div class="logo">
+    <div style="font-size:2.2rem;">💊</div>
+    <h2>MediFind — Register</h2>
+    <p>Create your free account</p>
+  </div>
+
+  <div class="msg" id="msg"></div>
+
+  <div class="tabs">
+    <button class="tab on" id="t1" onclick="sw('user')">👤 Patient / User</button>
+    <button class="tab"    id="t2" onclick="sw('pharma')">🏪 Pharmacy Owner</button>
+  </div>
+
+  <!-- USER FORM -->
+  <div id="userF">
+    <div class="row">
+      <div class="f"><label>Full Name *</label><input id="u_name" placeholder="Your full name"/></div>
+      <div class="f"><label>Phone</label><input id="u_phone" placeholder="Mobile number"/></div>
+    </div>
+    <div class="f"><label>Email Address *</label><input type="email" id="u_email" placeholder="your@email.com"/></div>
+    <div class="row">
+      <div class="f"><label>Password *</label><input type="password" id="u_pass" placeholder="Min 6 characters"/></div>
+      <div class="f"><label>Confirm Password *</label><input type="password" id="u_pass2" placeholder="Repeat password"/></div>
+    </div>
+    <div class="f"><label>Address (optional)</label><textarea id="u_addr" rows="2" placeholder="Your address…"></textarea></div>
+    <div class="f" style="display:flex;align-items:center;flex-wrap:wrap;gap:.6rem;">
+      <button class="loc-btn" type="button" onclick="getLoc('u')">📍 Detect My Location (optional)</button>
+      <span class="loc-txt" id="u_ls"></span>
+      <input type="hidden" id="u_lat" value="0"/>
+      <input type="hidden" id="u_lng" value="0"/>
+    </div>
+    <button class="btn-reg" id="uBtn" onclick="regUser()">Create Account →</button>
+  </div>
+
+  <!-- PHARMACY FORM -->
+  <div id="pharmaF" style="display:none;">
+    <div class="row">
+      <div class="f"><label>Owner Name *</label><input id="p_owner" placeholder="Your name"/></div>
+      <div class="f"><label>Pharmacy Name *</label><input id="p_name" placeholder="Store name"/></div>
+    </div>
+    <div class="row">
+      <div class="f"><label>Email *</label><input type="email" id="p_email" placeholder="pharmacy@email.com"/></div>
+      <div class="f"><label>Phone *</label><input id="p_phone" placeholder="Mobile number"/></div>
+    </div>
+    <div class="row">
+      <div class="f"><label>Password *</label><input type="password" id="p_pass" placeholder="Min 6 characters"/></div>
+      <div class="f"><label>Confirm Password *</label><input type="password" id="p_pass2" placeholder="Repeat password"/></div>
+    </div>
+    <div class="f"><label>Full Address *</label><textarea id="p_addr" rows="2" placeholder="Pharmacy street address…"></textarea></div>
+    <div class="f"><label>City *</label><input id="p_city" placeholder="e.g. Chennai"/></div>
+    <div class="f" style="display:flex;align-items:center;flex-wrap:wrap;gap:.6rem;">
+      <button class="loc-btn" type="button" onclick="getLoc('p')">📍 Detect Pharmacy Location *</button>
+      <span class="loc-txt" id="p_ls">Required for location-based search</span>
+      <input type="hidden" id="p_lat" value="0"/>
+      <input type="hidden" id="p_lng" value="0"/>
+    </div>
+    <button class="btn-reg" id="pBtn" onclick="regPharma()">Register Pharmacy →</button>
+  </div>
+
+  <div class="footer">Already have an account? <a href="../index.html">Sign in here</a></div>
+</div>
+
+<script>
+let tab = 'user';
+
+function sw(t) {
+  tab = t;
+  document.getElementById('t1').classList.toggle('on', t==='user');
+  document.getElementById('t2').classList.toggle('on', t==='pharma');
+  document.getElementById('userF').style.display   = t==='user'   ? 'block':'none';
+  document.getElementById('pharmaF').style.display = t==='pharma' ? 'block':'none';
+  document.getElementById('msg').className = 'msg';
+}
+
+function showMsg(txt, type) {
+  const m = document.getElementById('msg');
+  m.textContent = txt;
+  m.className = 'msg ' + type;
+}
+
+function getLoc(p) {
+  const ls = document.getElementById(p+'_ls');
+  ls.textContent = '📡 Detecting…';
+  if (!navigator.geolocation) { ls.textContent = '❌ Not supported'; return; }
+  navigator.geolocation.getCurrentPosition(pos => {
+    document.getElementById(p+'_lat').value = pos.coords.latitude.toFixed(6);
+    document.getElementById(p+'_lng').value = pos.coords.longitude.toFixed(6);
+    ls.style.color = '#34d399';
+    ls.textContent = '✅ ' + pos.coords.latitude.toFixed(4) + ', ' + pos.coords.longitude.toFixed(4);
+  }, () => {
+    ls.textContent = '❌ Permission denied. Please allow location.';
+  });
+}
+
+function v(id) { return document.getElementById(id).value.trim(); }
+
+async function regUser() {
+  const name=v('u_name'), email=v('u_email'), pass=v('u_pass'), pass2=v('u_pass2');
+  if (!name)            { showMsg('Full name is required.','err'); return; }
+  if (!email)           { showMsg('Email is required.','err'); return; }
+  if (!pass)            { showMsg('Password is required.','err'); return; }
+  if (pass.length < 6)  { showMsg('Password must be at least 6 characters.','err'); return; }
+  if (pass !== pass2)   { showMsg('Passwords do not match.','err'); return; }
+
+  const btn = document.getElementById('uBtn');
+  btn.disabled = true; btn.textContent = 'Registering…';
+
+  try {
+    const res  = await fetch('/api/register/user', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        fullName: name, email, password: pass,
+        phone:    v('u_phone'),
+        address:  v('u_addr'),
+        latitude:  parseFloat(document.getElementById('u_lat').value)||0,
+        longitude: parseFloat(document.getElementById('u_lng').value)||0
+      })
+    });
+    const data = await res.json();
+    if (data.success) {
+      showMsg('✅ Account created! Redirecting to login…','ok');
+      setTimeout(() => window.location.href = '../index.html?msg=Registration+successful!+Please+login.', 1800);
+    } else {
+      showMsg(data.error||'Registration failed.','err');
+      btn.disabled=false; btn.textContent='Create Account →';
+    }
+  } catch(e) {
+    showMsg('Cannot reach server. Run: node server.js','err');
+    btn.disabled=false; btn.textContent='Create Account →';
+  }
+}
+
+async function regPharma() {
+  const owner=v('p_owner'), pname=v('p_name'), email=v('p_email'),
+        pass=v('p_pass'), pass2=v('p_pass2'), addr=v('p_addr'), city=v('p_city');
+  const lat = parseFloat(document.getElementById('p_lat').value)||0;
+  const lng = parseFloat(document.getElementById('p_lng').value)||0;
+
+  if (!owner)           { showMsg('Owner name is required.','err'); return; }
+  if (!pname)           { showMsg('Pharmacy name is required.','err'); return; }
+  if (!email)           { showMsg('Email is required.','err'); return; }
+  if (!pass)            { showMsg('Password is required.','err'); return; }
+  if (pass.length < 6)  { showMsg('Password must be at least 6 characters.','err'); return; }
+  if (pass !== pass2)   { showMsg('Passwords do not match.','err'); return; }
+  if (!addr)            { showMsg('Address is required.','err'); return; }
+  if (!city)            { showMsg('City is required.','err'); return; }
+  if (!lat || !lng)     { showMsg('Please detect pharmacy location (GPS required).','err'); return; }
+
+  const btn = document.getElementById('pBtn');
+  btn.disabled = true; btn.textContent = 'Registering…';
+
+  try {
+    const res  = await fetch('/api/register/pharmacy', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        ownerName:pname, pharmacyName:pname, ownerName:owner,
+        email, password:pass,
+        phone:   v('p_phone'),
+        address: addr, city, latitude:lat, longitude:lng
+      })
+    });
+    const data = await res.json();
+    if (data.success) {
+      showMsg('✅ Pharmacy registered! Redirecting…','ok');
+      setTimeout(() => window.location.href = '../index.html?msg=Pharmacy+registered!+Please+login.', 1800);
+    } else {
+      showMsg(data.error||'Registration failed.','err');
+      btn.disabled=false; btn.textContent='Register Pharmacy →';
+    }
+  } catch(e) {
+    showMsg('Cannot reach server. Run: node server.js','err');
+    btn.disabled=false; btn.textContent='Register Pharmacy →';
+  }
+}
+
+const p = new URLSearchParams(window.location.search);
+if (p.get('role')==='pharmacy') sw('pharma');
+</script>
+</body>
+</html>
