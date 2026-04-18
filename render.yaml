@@ -9,9 +9,9 @@ services:
       - key: NODE_ENV
         value: production
       - key: DB_HOST
-        value: mysql.railway.internal
+        value: roundhouse.proxy.rlwy.net
       - key: DB_PORT
-        value: 3306
+        value: 29018
       - key: DB_USER
         sync: false
       - key: DB_PASS
