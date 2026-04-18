@@ -1,0 +1,59 @@
+﻿require('dotenv').config();
+
+const express = require('express');
+const path = require('path');
+const cookieParser = require('cookie-parser');
+const cors = require('cors');
+const helmet = require('helmet');
+const config = require('./config/config');
+const { pool } = require('./config/db');
+const { authMiddleware } = require('./middleware/auth');
+const authRoutes = require('./routes/auth');
+const searchRoutes = require('./routes/search');
+const orderRoutes = require('./routes/order');
+const medicineRoutes = require('./routes/medicine');
+const notificationRoutes = require('./routes/notifications');
+const adminRoutes = require('./routes/admin');
+
+const app = express();
+
+app.use(helmet());
+app.use(cors({ origin: true, credentials: true }));
+app.use(express.json());
+app.use(cookieParser());
+app.use(authMiddleware);
+
+app.use('/api', authRoutes);
+app.use('/api', searchRoutes);
+app.use('/api', orderRoutes);
+app.use('/api', medicineRoutes);
+app.use('/api', notificationRoutes);
+app.use('/api', adminRoutes);
+
+app.use(express.static(path.join(__dirname)));
+app.get('/api/health', (req, res) => res.json({ status: 'ok' }));
+app.use((req, res) => res.status(404).send('Not found'));
+
+const port = config.port;
+
+async function start() {
+  try {
+    const conn = await pool.getConnection();
+    conn.release();
+    console.log('✅ MySQL connected');
+  } catch (error) {
+    console.error('❌ MySQL connection failed:', error.message);
+  }
+
+  app.listen(port, () => {
+    console.log('\n╔═══════════════════════════════════════════════╗');
+    console.log('║   💊  MediFind v3  –  Express Server          ║');
+    console.log(║   ➜   http://localhost:.padEnd(46) + '║');
+    console.log('║                                               ║');
+    console.log('║   Features: JWT auth · MVC routes · AI suggest║');
+    console.log('║   Press Ctrl+C to stop                       ║');
+    console.log('╚═══════════════════════════════════════════════╝\n');
+  });
+}
+
+start();

@@ -49,3 +49,36 @@ async function checkAuth(role) {
   if (r) r.textContent=d.role;
   return d;
 }
+
+async function getAISuggestions() {
+  const symptoms = document.getElementById('symptomsInp').value.trim();
+  if (!symptoms) {
+    alert_('Please describe your symptoms.', 'err');
+    return;
+  }
+  const res = document.getElementById('aiResults');
+  res.innerHTML = '<div class="loading">🤖 Analyzing symptoms...</div>';
+  try {
+    const data = await api('/api/ai/suggest', { symptoms });
+    if (data.success) {
+      let html = '<h4>Recommended Medicines:</h4><ul>';
+      data.medicines.forEach(m => {
+        html += `<li><strong>${m.name}</strong> - ${m.description}</li>`;
+      });
+      html += '</ul>';
+      if (data.pharmacies && data.pharmacies.length > 0) {
+        html += '<h4>Nearby Pharmacies:</h4><ul>';
+        data.pharmacies.forEach(p => {
+          html += `<li><strong>${p.name}</strong> (${p.distance.toFixed(1)} km) - ${p.address}</li>`;
+        });
+        html += '</ul>';
+      }
+      res.innerHTML = html;
+    } else {
+      res.innerHTML = '<div class="error">No recommendations found. Please try different symptoms.</div>';
+    }
+  } catch (e) {
+    res.innerHTML = '<div class="error">Failed to get AI suggestions. Try again.</div>';
+  }
+}
+

@@ -44,6 +44,9 @@
           <button class="nb" data-sec="map" onclick="showSec('map')">
             <span class="ni">🗺️</span>Pharmacy Map
           </button>
+          <button class="nb" data-sec="ai" onclick="showSec('ai')">
+            <span class="ni">🤖</span>AI Assistant
+          </button>
           <div class="nav-lbl" style="margin-top: 0.5rem">Actions</div>
           <button class="nb" onclick="openCart()">
             <span class="ni">🛒</span>My Cart
@@ -120,6 +123,24 @@
                 <tbody id="ordTb"></tbody>
               </table>
             </div>
+          </div>
+        </div>
+
+        <!-- AI ASSISTANT -->
+        <div id="s-ai" data-sec class="sh">
+          <div class="ph">
+            <div>
+              <div class="pt">AI Symptom Assistant</div>
+              <div class="ps">Describe your symptoms to get medicine recommendations</div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="field">
+              <label>Describe your symptoms</label>
+              <textarea id="symptomsInp" class="inp" placeholder="e.g. I have fever, headache, and sore throat" rows="4"></textarea>
+            </div>
+            <button class="btn bg" onclick="getAISuggestions()">🤖 Get Recommendations</button>
+            <div id="aiResults" class="mt2"></div>
           </div>
         </div>
 
@@ -478,6 +499,14 @@
     <script src="../js/app.js"></script>
     <script>
       // ═══ STATE ═══════════════════════════════════════════════
+      const MAP_API_KEY = ""; // Add your map provider API key here if needed
+      const MAP_TILE_URL = MAP_API_KEY
+        ? `https://api.maptiler.com/tiles/basic/{z}/{x}/{y}.png?key=${MAP_API_KEY}`
+        : "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
+      const MAP_TILE_ATTRIBUTION = MAP_API_KEY
+        ? '© OpenStreetMap contributors © MapTiler'
+        : '© OpenStreetMap';
+
       let uLat = 0,
         uLng = 0,
         selMed = null,
@@ -504,9 +533,11 @@
       let locMapPicker = null;
 
       function getLoc() {
-        // Open location modal instead of auto-detecting
         updateLocStatus();
         openM("locMod");
+        if (navigator.geolocation) {
+          getGPSLocation();
+        }
       }
 
       function updateLocStatus() {
@@ -635,8 +666,8 @@
           12,
         );
 
-        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-          attribution: "© OpenStreetMap",
+        L.tileLayer(MAP_TILE_URL, {
+          attribution: MAP_TILE_ATTRIBUTION,
           maxZoom: 19,
         }).addTo(window.locMapInstance);
 
@@ -1196,8 +1227,8 @@
           return;
         }
         leafMap = L.map("map").setView([uLat || 13.0827, uLng || 80.2707], 12);
-        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-          attribution: "© OpenStreetMap",
+        L.tileLayer(MAP_TILE_URL, {
+          attribution: MAP_TILE_ATTRIBUTION,
         }).addTo(leafMap);
         if (uLat && uLng)
           L.circleMarker([uLat, uLng], {
