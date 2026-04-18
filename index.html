@@ -90,9 +90,9 @@ input::placeholder{color:#334155;}
     <div id="msg"></div>
 
     <div class="tabs">
-      <button class="tab on" id="t-USER"     onclick="setRole('USER')">👤 User</button>
-      <button class="tab"    id="t-PHARMACY" onclick="setRole('PHARMACY')">🏪 Pharmacy</button>
-      <button class="tab"    id="t-ADMIN"    onclick="setRole('ADMIN')">🛡 Admin</button>
+      <button type="button" class="tab on" id="t-USER"     onclick="setRole('USER')">👤 User</button>
+      <button type="button" class="tab"    id="t-PHARMACY" onclick="setRole('PHARMACY')">🏪 Pharmacy</button>
+      <button type="button" class="tab"    id="t-ADMIN"    onclick="setRole('ADMIN')">🛡 Admin</button>
     </div>
 
     <div class="field">
@@ -103,7 +103,7 @@ input::placeholder{color:#334155;}
       <label>Password</label>
       <input type="password" id="passInp" placeholder="Enter password" autocomplete="current-password"/>
     </div>
-    <button class="btn-main" id="loginBtn" onclick="doLogin()">Sign In →</button>
+    <button type="button" class="btn-main" id="loginBtn" onclick="doLogin()">Sign In →</button>
 
     <div class="footer-link">
       No account? <a href="pages/register.html">Register here</a>

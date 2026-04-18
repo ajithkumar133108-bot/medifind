@@ -17,7 +17,7 @@ const adminRoutes = require('./routes/admin');
 
 const app = express();
 
-app.use(helmet());
+// app.use(helmet());
 app.use(cors({ origin: true, credentials: true }));
 app.use(express.json());
 app.use(cookieParser());

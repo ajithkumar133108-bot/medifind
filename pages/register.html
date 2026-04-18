@@ -48,8 +48,8 @@ body{font-family:'Outfit',sans-serif;background:#060d1a;min-height:100vh;display
   <div class="msg" id="msg"></div>
 
   <div class="tabs">
-    <button class="tab on" id="t1" onclick="sw('user')">👤 Patient / User</button>
-    <button class="tab"    id="t2" onclick="sw('pharma')">🏪 Pharmacy Owner</button>
+    <button type="button" class="tab on" id="t1" onclick="sw('user')">👤 Patient / User</button>
+    <button type="button" class="tab"    id="t2" onclick="sw('pharma')">🏪 Pharmacy Owner</button>
   </div>
 
   <!-- USER FORM -->
@@ -65,12 +65,12 @@ body{font-family:'Outfit',sans-serif;background:#060d1a;min-height:100vh;display
     </div>
     <div class="f"><label>Address (optional)</label><textarea id="u_addr" rows="2" placeholder="Your address…"></textarea></div>
     <div class="f" style="display:flex;align-items:center;flex-wrap:wrap;gap:.6rem;">
-      <button class="loc-btn" type="button" onclick="getLoc('u')">📍 Detect My Location (optional)</button>
+      <button type="button" class="loc-btn" onclick="getLoc('u')">📍 Detect My Location (optional)</button>
       <span class="loc-txt" id="u_ls"></span>
       <input type="hidden" id="u_lat" value="0"/>
       <input type="hidden" id="u_lng" value="0"/>
     </div>
-    <button class="btn-reg" id="uBtn" onclick="regUser()">Create Account →</button>
+    <button type="button" class="btn-reg" id="uBtn" onclick="regUser()">Create Account →</button>
   </div>
 
   <!-- PHARMACY FORM -->
@@ -90,12 +90,12 @@ body{font-family:'Outfit',sans-serif;background:#060d1a;min-height:100vh;display
     <div class="f"><label>Full Address *</label><textarea id="p_addr" rows="2" placeholder="Pharmacy street address…"></textarea></div>
     <div class="f"><label>City *</label><input id="p_city" placeholder="e.g. Chennai"/></div>
     <div class="f" style="display:flex;align-items:center;flex-wrap:wrap;gap:.6rem;">
-      <button class="loc-btn" type="button" onclick="getLoc('p')">📍 Detect Pharmacy Location *</button>
+      <button type="button" class="loc-btn" onclick="getLoc('p')">📍 Detect Pharmacy Location *</button>
       <span class="loc-txt" id="p_ls">Required for location-based search</span>
       <input type="hidden" id="p_lat" value="0"/>
       <input type="hidden" id="p_lng" value="0"/>
     </div>
-    <button class="btn-reg" id="pBtn" onclick="regPharma()">Register Pharmacy →</button>
+    <button type="button" class="btn-reg" id="pBtn" onclick="regPharma()">Register Pharmacy →</button>
   </div>
 
   <div class="footer">Already have an account? <a href="../index.html">Sign in here</a></div>
