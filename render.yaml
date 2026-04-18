@@ -1,0 +1,24 @@
+services:
+  - type: web
+    name: medifind
+    env: node
+    plan: free
+    buildCommand: npm install && npm rebuild bcrypt
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DB_HOST
+        value: mysql.railway.internal
+      - key: DB_PORT
+        value: 3306
+      - key: DB_USER
+        sync: false
+      - key: DB_PASS
+        sync: false
+      - key: DB_NAME
+        value: railway
+      - key: JWT_SECRET
+        sync: false
+      - key: PORT
+        value: 10000
