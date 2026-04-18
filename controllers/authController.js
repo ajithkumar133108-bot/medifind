@@ -1,5 +1,6 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const validator = require('validator');
 const config = require('../config/config');
 const userModel = require('../models/userModel');
 const pharmacyModel = require('../models/pharmacyModel');
@@ -41,10 +42,14 @@ async function logout(req, res) {
 async function login(req, res) {
   const { role = 'USER', email = '', password = '' } = req.body;
   const normalizedRole = role.toUpperCase();
-  const trimmedEmail = email.trim();
+  const trimmedEmail = validator.escape(email.trim());
 
   if (!trimmedEmail || !password) {
     return res.status(400).json({ error: 'Email and password required.' });
+  }
+
+  if (normalizedRole !== 'ADMIN' && !validator.isEmail(trimmedEmail)) {
+    return res.status(400).json({ error: 'Invalid email format.' });
   }
 
   try {
@@ -82,19 +87,33 @@ async function login(req, res) {
 
 async function registerUser(req, res) {
   const { fullName, email, password, phone, address, latitude, longitude } = req.body;
-  if (!fullName || !email || !password) {
+  const sanitizedFullName = validator.escape(fullName.trim());
+  const sanitizedEmail = validator.escape(email.trim());
+  const sanitizedPhone = phone ? validator.escape(phone.trim()) : '';
+  const sanitizedAddress = address ? validator.escape(address.trim()) : '';
+
+  if (!sanitizedFullName || !sanitizedEmail || !password) {
     return res.status(400).json({ error: 'Name, email and password required.' });
   }
+
+  if (!validator.isEmail(sanitizedEmail)) {
+    return res.status(400).json({ error: 'Invalid email format.' });
+  }
+
+  if (password.length < 6) {
+    return res.status(400).json({ error: 'Password must be at least 6 characters.' });
+  }
+
   try {
-    const existing = await userModel.findUserByEmail(email.trim());
+    const existing = await userModel.findUserByEmail(sanitizedEmail);
     if (existing) return res.status(409).json({ error: 'Email already registered.' });
     const hashedPassword = await bcrypt.hash(password, 10);
     const userId = await userModel.createUser({
-      full_name: fullName.trim(),
-      email: email.trim(),
+      full_name: sanitizedFullName,
+      email: sanitizedEmail,
       password: hashedPassword,
-      phone: phone || '',
-      address: address || '',
+      phone: sanitizedPhone,
+      address: sanitizedAddress,
       latitude: parseFloat(latitude) || 0,
       longitude: parseFloat(longitude) || 0,
     });
@@ -106,21 +125,37 @@ async function registerUser(req, res) {
 
 async function registerPharmacy(req, res) {
   const { ownerName, pharmacyName, email, password, phone, address, city, latitude, longitude } = req.body;
-  if (!ownerName || !pharmacyName || !email || !password) {
+  const sanitizedOwnerName = validator.escape(ownerName.trim());
+  const sanitizedPharmacyName = validator.escape(pharmacyName.trim());
+  const sanitizedEmail = validator.escape(email.trim());
+  const sanitizedPhone = phone ? validator.escape(phone.trim()) : '';
+  const sanitizedAddress = address ? validator.escape(address.trim()) : '';
+  const sanitizedCity = city ? validator.escape(city.trim()) : '';
+
+  if (!sanitizedOwnerName || !sanitizedPharmacyName || !sanitizedEmail || !password) {
     return res.status(400).json({ error: 'All fields required.' });
   }
+
+  if (!validator.isEmail(sanitizedEmail)) {
+    return res.status(400).json({ error: 'Invalid email format.' });
+  }
+
+  if (password.length < 6) {
+    return res.status(400).json({ error: 'Password must be at least 6 characters.' });
+  }
+
   try {
-    const existing = await pharmacyModel.findPharmacyByEmail(email.trim());
+    const existing = await pharmacyModel.findPharmacyByEmail(sanitizedEmail);
     if (existing) return res.status(409).json({ error: 'Email already registered.' });
     const hashedPassword = await bcrypt.hash(password, 10);
     const pharmacyId = await pharmacyModel.createPharmacy({
-      owner_name: ownerName.trim(),
-      pharmacy_name: pharmacyName.trim(),
-      email: email.trim(),
+      owner_name: sanitizedOwnerName,
+      pharmacy_name: sanitizedPharmacyName,
+      email: sanitizedEmail,
       password: hashedPassword,
-      phone: phone || '',
-      address: address || '',
-      city: city || '',
+      phone: sanitizedPhone,
+      address: sanitizedAddress,
+      city: sanitizedCity,
       latitude: parseFloat(latitude) || 0,
       longitude: parseFloat(longitude) || 0,
     });

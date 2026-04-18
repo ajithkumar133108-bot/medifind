@@ -4,7 +4,7 @@ const { haversine } = require('../utils/haversine');
 const { suggestMedicines } = require('../utils/ai');
 
 async function searchMedicines(req, res) {
-  const { medicine = '', lat = 0, lng = 0, radius = 50 } = req.query;
+  const { medicine = '', lat = 0, lng = 0, radius = 50, category = '', minPrice = '', maxPrice = '' } = req.query;
   const name = (medicine || '').trim();
   if (!name) return res.status(400).json({ error: 'Medicine name required.' });
 
@@ -16,8 +16,17 @@ async function searchMedicines(req, res) {
     }));
     if (lat && lng) {
       results = results.filter((r) => r.distanceKm <= parseFloat(radius));
-      results.sort((a, b) => a.distanceKm - b.distanceKm);
     }
+    if (category) {
+      results = results.filter((r) => r.category === category);
+    }
+    if (minPrice) {
+      results = results.filter((r) => r.price >= parseFloat(minPrice));
+    }
+    if (maxPrice) {
+      results = results.filter((r) => r.price <= parseFloat(maxPrice));
+    }
+    results.sort((a, b) => a.distanceKm - b.distanceKm);
     return res.json({ count: results.length, results });
   } catch (error) {
     return res.status(500).json({ error: error.message });

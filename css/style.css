@@ -1096,3 +1096,122 @@ tbody tr:last-child td {
     width: 100%;
   }
 }
+
+/* Enhanced Mobile Responsiveness */
+@media (max-width: 767px) {
+  /* Login/Register Page */
+  body {
+    grid-template-columns: 1fr !important;
+    grid-template-rows: auto 1fr;
+  }
+  .left {
+    order: 2;
+    padding: 2rem 1.5rem;
+    min-height: auto;
+  }
+  .right {
+    order: 1;
+    padding: 1.5rem;
+    border-left: none;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  }
+  .box {
+    max-width: none;
+    padding: 2rem 1.5rem;
+  }
+  .tabs {
+    grid-template-columns: 1fr;
+    gap: 2px;
+  }
+  .tab {
+    padding: 0.7rem;
+    font-size: 0.9rem;
+  }
+  .btn-main,
+  .btn-reg {
+    min-height: 44px;
+    padding: 0.9rem;
+    font-size: 1rem;
+  }
+  .features {
+    grid-template-columns: 1fr;
+    gap: 0.8rem;
+  }
+  .feat {
+    padding: 0.9rem 1.2rem;
+  }
+  .quick {
+    padding-top: 1.5rem;
+  }
+  .ql {
+    grid-template-columns: 1fr;
+  }
+  .qi {
+    padding: 0.7rem 1rem;
+  }
+
+  /* Dashboard Pages */
+  .wrap {
+    display: flex;
+    flex-direction: column;
+  }
+  .sidebar {
+    order: 2;
+    height: auto;
+    position: static;
+  }
+  .main {
+    order: 1;
+    padding: 1rem 0.5rem;
+  }
+  .page-hdr {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 1rem;
+  }
+  .page-hdr > div:first-child {
+    text-align: center;
+  }
+  .stats {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+  .stat {
+    padding: 1rem;
+  }
+  .card {
+    padding: 1rem;
+  }
+  .tbl-wrap {
+    overflow-x: auto;
+  }
+  table {
+    min-width: 600px;
+  }
+  .btn {
+    min-height: 44px;
+    padding: 0.8rem 1.2rem;
+    font-size: 0.9rem;
+  }
+  .inp {
+    min-height: 44px;
+    padding: 0.8rem;
+  }
+  .modal {
+    width: 95%;
+    max-width: none;
+  }
+  .cart-panel,
+  .notif-panel {
+    width: 100%;
+    right: 0;
+  }
+  .cp-head,
+  .np-head {
+    padding: 1rem;
+  }
+  .cp-items,
+  .np-items {
+    padding: 1rem;
+  }
+}

@@ -18,6 +18,32 @@ function alert_(msg, type, secs) {
   if (t>0) setTimeout(()=>el.classList.remove('show'), t*1000);
 }
 
+// Input Validation Functions
+function validateEmail(email) {
+  const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return re.test(email);
+}
+
+function validatePassword(pass) {
+  return pass.length >= 6;
+}
+
+function validateRequired(value, fieldName) {
+  if (!value || value.trim() === '') {
+    alert_(`${fieldName} is required.`, 'err');
+    return false;
+  }
+  return true;
+}
+
+function setLoading(btnId, loading) {
+  const btn = document.getElementById(btnId);
+  if (!btn) return;
+  btn.disabled = loading;
+  btn.textContent = loading ? 'Loading…' : btn.dataset.originalText || btn.textContent;
+  if (!btn.dataset.originalText) btn.dataset.originalText = btn.textContent;
+}
+
 function showSec(id) {
   document.querySelectorAll('[data-sec]').forEach(s => s.classList.add('sh'));
   const el = document.getElementById('s-'+id);

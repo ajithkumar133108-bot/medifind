@@ -137,14 +137,13 @@ function v(id) { return document.getElementById(id).value.trim(); }
 
 async function regUser() {
   const name=v('u_name'), email=v('u_email'), pass=v('u_pass'), pass2=v('u_pass2');
-  if (!name)            { showMsg('Full name is required.','err'); return; }
-  if (!email)           { showMsg('Email is required.','err'); return; }
-  if (!pass)            { showMsg('Password is required.','err'); return; }
-  if (pass.length < 6)  { showMsg('Password must be at least 6 characters.','err'); return; }
-  if (pass !== pass2)   { showMsg('Passwords do not match.','err'); return; }
+  if (!validateRequired(name, 'Full name')) return;
+  if (!validateRequired(email, 'Email')) return;
+  if (!validateEmail(email)) { showMsg('Please enter a valid email address.', 'err'); return; }
+  if (!validatePassword(pass)) { showMsg('Password must be at least 6 characters.', 'err'); return; }
+  if (pass !== pass2) { showMsg('Passwords do not match.', 'err'); return; }
 
-  const btn = document.getElementById('uBtn');
-  btn.disabled = true; btn.textContent = 'Registering…';
+  setLoading('uBtn', true);
 
   try {
     const res  = await fetch('/api/register/user', {
@@ -163,11 +162,11 @@ async function regUser() {
       setTimeout(() => window.location.href = '../index.html?msg=Registration+successful!+Please+login.', 1800);
     } else {
       showMsg(data.error||'Registration failed.','err');
-      btn.disabled=false; btn.textContent='Create Account →';
+      setLoading('uBtn', false);
     }
   } catch(e) {
     showMsg('Cannot reach server. Run: node server.js','err');
-    btn.disabled=false; btn.textContent='Create Account →';
+    setLoading('uBtn', false);
   }
 }
 
@@ -177,18 +176,17 @@ async function regPharma() {
   const lat = parseFloat(document.getElementById('p_lat').value)||0;
   const lng = parseFloat(document.getElementById('p_lng').value)||0;
 
-  if (!owner)           { showMsg('Owner name is required.','err'); return; }
-  if (!pname)           { showMsg('Pharmacy name is required.','err'); return; }
-  if (!email)           { showMsg('Email is required.','err'); return; }
-  if (!pass)            { showMsg('Password is required.','err'); return; }
-  if (pass.length < 6)  { showMsg('Password must be at least 6 characters.','err'); return; }
-  if (pass !== pass2)   { showMsg('Passwords do not match.','err'); return; }
-  if (!addr)            { showMsg('Address is required.','err'); return; }
-  if (!city)            { showMsg('City is required.','err'); return; }
-  if (!lat || !lng)     { showMsg('Please detect pharmacy location (GPS required).','err'); return; }
+  if (!validateRequired(owner, 'Owner name')) return;
+  if (!validateRequired(pname, 'Pharmacy name')) return;
+  if (!validateRequired(email, 'Email')) return;
+  if (!validateEmail(email)) { showMsg('Please enter a valid email address.', 'err'); return; }
+  if (!validatePassword(pass)) { showMsg('Password must be at least 6 characters.', 'err'); return; }
+  if (pass !== pass2) { showMsg('Passwords do not match.', 'err'); return; }
+  if (!validateRequired(addr, 'Address')) return;
+  if (!validateRequired(city, 'City')) return;
+  if (!lat || !lng) { showMsg('Please detect pharmacy location (GPS required).','err'); return; }
 
-  const btn = document.getElementById('pBtn');
-  btn.disabled = true; btn.textContent = 'Registering…';
+  setLoading('pBtn', true);
 
   try {
     const res  = await fetch('/api/register/pharmacy', {
@@ -206,11 +204,11 @@ async function regPharma() {
       setTimeout(() => window.location.href = '../index.html?msg=Pharmacy+registered!+Please+login.', 1800);
     } else {
       showMsg(data.error||'Registration failed.','err');
-      btn.disabled=false; btn.textContent='Register Pharmacy →';
+      setLoading('pBtn', false);
     }
   } catch(e) {
     showMsg('Cannot reach server. Run: node server.js','err');
-    btn.disabled=false; btn.textContent='Register Pharmacy →';
+    setLoading('pBtn', false);
   }
 }
 

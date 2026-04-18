@@ -46,7 +46,7 @@
 
   <!-- MEDICINES -->
   <div id="s-meds" data-sec class="sh">
-    <div class="ph"><div><div class="pt">Medicine Inventory</div><div class="ps">Manage your stock</div></div><button class="btn bg" onclick="openAdd()">+ Add Medicine</button></div>
+    <div class="ph"><div><div class="pt">Medicine Inventory</div><div class="ps">Manage your stock</div></div><div class="flex gap1"><button class="btn bg" onclick="openAdd()">+ Add Medicine</button><button class="btn bo" onclick="openBulkImport()">📤 Bulk Import</button></div></div>
     <div class="card"><div class="tw"><table>
       <thead><tr><th>Name</th><th>Brand</th><th>Category</th><th>Price</th><th>Stock</th><th>Unit</th><th>Rx</th><th>Delivery</th><th>Actions</th></tr></thead>
       <tbody id="medTb"></tbody>
@@ -109,6 +109,23 @@
   </div>
 </div>
 
+<div class="mbg" id="importMod">
+  <div class="modal" style="max-width:520px;">
+    <h3>📤 Bulk Import Medicines</h3>
+    <div class="fg">
+      <label class="lbl">Upload CSV file</label>
+      <input type="file" id="importFile" class="inp" accept=".csv" />
+    </div>
+    <div class="fg">
+      <p class="td">CSV columns: medicineName,brand,category,price,stockQuantity,unit,requiresPrescription,deliveryAvailable,description</p>
+    </div>
+    <div class="mf">
+      <button class="btn bo" onclick="closeM('importMod')">Cancel</button>
+      <button class="btn bg" id="importBtn" onclick="processImport()">Import</button>
+    </div>
+  </div>
+</div>
+
 <script src="../js/app.js"></script>
 <script>
 let allMeds=[], isEdit=false;
@@ -160,6 +177,56 @@ function openAdd(){
   document.getElementById('fU').value='Tablet'; document.getElementById('fRx').value='0';
   document.getElementById('fD').value='true'; openM('medMod');
 }
+function openBulkImport(){
+  document.getElementById('importFile').value = '';
+  openM('importMod');
+}
+
+function parseCsv(text){
+  const lines = text.trim().split(/\r?\n/).filter(Boolean);
+  if(!lines.length) return [];
+  const headers = lines.shift().split(',').map(h=>h.trim());
+  return lines.map(line=>{
+    const values = line.split(',').map(v=>v.trim());
+    const item = {};
+    headers.forEach((h,i)=> item[h] = values[i] || '');
+    return item;
+  });
+}
+
+async function processImport(){
+  const file = document.getElementById('importFile').files[0];
+  if(!file){alert_('Select a CSV file first.','err');return;}
+  const btn = document.getElementById('importBtn'); btn.disabled=true; btn.textContent='Importing…';
+  const text = await file.text();
+  const rows = parseCsv(text);
+  if(!rows.length){alert_('CSV file is empty or invalid.','err');btn.disabled=false;btn.textContent='Import';return;}
+
+  let success=0, failed=0;
+  for(const row of rows){
+    const pl = {
+      medicineName: row.medicineName || row.name || '',
+      brand: row.brand || '',
+      category: row.category || 'General',
+      price: parseFloat(row.price) || 0,
+      stockQuantity: parseInt(row.stockQuantity) || 0,
+      unit: row.unit || 'Tablet',
+      requiresPrescription: ['1','yes','true','y'].includes((row.requiresPrescription||row.rx||'').toString().toLowerCase()),
+      deliveryAvailable: ['1','yes','true','y'].includes((row.deliveryAvailable||row.delivery||'').toString().toLowerCase()),
+      description: row.description || ''
+    };
+    if(!pl.medicineName || !pl.price || !pl.stockQuantity){ failed++; continue; }
+    const d = await api('/api/medicines/add', pl);
+    if(d && d.success) success++; else failed++;
+  }
+
+  btn.disabled=false; btn.textContent='Import';
+  closeM('importMod');
+  loadMeds();
+  loadDash();
+  alert_(`Import complete: ${success} added, ${failed} failed.`,`ok`,5);
+}
+
 function openEdit(id){
   const m=allMeds.find(x=>x.id===id); if(!m) return;
   isEdit=true; document.getElementById('mTitle').textContent='✏️ Edit Medicine';

@@ -41,6 +41,9 @@
           <button class="nb" data-sec="orders" onclick="showSec('orders')">
             <span class="ni">📦</span>My Orders
           </button>
+          <button class="nb" data-sec="favorites" onclick="showSec('favorites')">
+            <span class="ni">❤️</span>Favorites
+          </button>
           <button class="nb" data-sec="map" onclick="showSec('map')">
             <span class="ni">🗺️</span>Pharmacy Map
           </button>
@@ -92,6 +95,21 @@
             <button class="btn bo" onclick="getLoc()">📍 My Location</button>
             <button class="btn bg" onclick="doSearch()">🔍 Search</button>
           </div>
+          <div class="filters" style="display: flex; gap: 1rem; margin-bottom: 1rem; flex-wrap: wrap;">
+            <select id="category" class="inp" style="max-width: 150px;">
+              <option value="">All Categories</option>
+              <option value="Pain Relief">Pain Relief</option>
+              <option value="Antibiotics">Antibiotics</option>
+              <option value="Allergy">Allergy</option>
+              <option value="Cold & Flu">Cold & Flu</option>
+              <option value="Digestive">Digestive</option>
+              <option value="Vitamins">Vitamins</option>
+              <option value="Other">Other</option>
+            </select>
+            <input id="minPrice" class="inp" placeholder="Min Price" type="number" min="0" step="0.01" style="max-width: 100px;" />
+            <input id="maxPrice" class="inp" placeholder="Max Price" type="number" min="0" step="0.01" style="max-width: 100px;" />
+            <button class="btn bo" onclick="clearFilters()">Clear Filters</button>
+          </div>
           <div id="locTxt" class="td mb1"></div>
           <div id="results"></div>
         </div>
@@ -124,6 +142,17 @@
               </table>
             </div>
           </div>
+        </div>
+
+        <!-- FAVORITES -->
+        <div id="s-favorites" data-sec class="sh">
+          <div class="ph">
+            <div>
+              <div class="pt">My Favorites</div>
+              <div class="ps">Quick access to your favorite medicines</div>
+            </div>
+          </div>
+          <div id="favoritesList"></div>
         </div>
 
         <!-- AI ASSISTANT -->
@@ -511,7 +540,7 @@
         uLng = 0,
         selMed = null,
         leafMap = null;
-      let cart = []; // [{ med, quantity, deliveryType, deliveryAddress }]
+      let favorites = []; // [medicine objects]
 
       // ═══ INIT ════════════════════════════════════════════════
       window.onload = async function () {
@@ -520,6 +549,7 @@
         loadSavedLocation();
         updateLocStatus();
         loadCart();
+        loadFavorites();
         pollNotifications();
         setInterval(pollNotifications, 30000); // check every 30s
       };
@@ -527,6 +557,7 @@
       function afterShow(id) {
         if (id === "orders") loadOrders();
         if (id === "map") initMap();
+        if (id === "favorites") displayFavorites();
       }
 
       // ═══ LOCATION ════════════════════════════════════════════
@@ -783,11 +814,17 @@
           return;
         }
         const rad = document.getElementById("rad").value;
+        const category = document.getElementById("category").value;
+        const minPrice = document.getElementById("minPrice").value;
+        const maxPrice = document.getElementById("maxPrice").value;
         const res = document.getElementById("results");
         res.innerHTML = '<div class="sc"><div class="spin"></div></div>';
 
         let url = `/api/search?medicine=${encodeURIComponent(name)}&radius=${rad}`;
         if (uLat && uLng) url += `&lat=${uLat}&lng=${uLng}`;
+        if (category) url += `&category=${encodeURIComponent(category)}`;
+        if (minPrice) url += `&minPrice=${minPrice}`;
+        if (maxPrice) url += `&maxPrice=${maxPrice}`;
 
         let data;
         try {
@@ -803,7 +840,7 @@
           return;
         }
         if (!data.results || !data.results.length) {
-          res.innerHTML = `<div class="alert awn show">No results for "<strong>${name}</strong>" within ${rad} km. Try a bigger radius.</div>`;
+          res.innerHTML = `<div class="alert awn show">No results for "<strong>${name}</strong>" within ${rad} km. Try a bigger radius or adjust filters.</div>`;
           return;
         }
 
@@ -840,12 +877,20 @@
       <div class="madr">📌 ${m.pharmacy_address}</div>
       ${dist}
       <div class="mc-actions">
+        <button class="btn bo" onclick='toggleFavorite(${JSON.stringify(m).replace(/"/g, "&quot;")})' id="fav-${m.id}">${favorites.some(f => f.id === m.id) ? "💔 Remove" : "❤️ Favorite"}</button>
         <button class="btn bo" onclick='openBook(${JSON.stringify(m).replace(/"/g, "&quot;")})'>🛒 Add to Cart</button>
         <button class="btn bg" onclick='quickAdd(${JSON.stringify(m).replace(/"/g, "&quot;")})'>⚡ Buy Now</button>
       </div>`;
           grid.appendChild(c);
         });
         res.appendChild(grid);
+      }
+
+      function clearFilters() {
+        document.getElementById("category").value = "";
+        document.getElementById("minPrice").value = "";
+        document.getElementById("maxPrice").value = "";
+        doSearch();
       }
       document.addEventListener("keydown", (e) => {
         if (
@@ -995,6 +1040,87 @@
           cart = [];
         }
         renderCart();
+      }
+
+      function loadFavorites() {
+        try {
+          const s = localStorage.getItem("mf_favorites");
+          if (s) favorites = JSON.parse(s);
+        } catch {
+          favorites = [];
+        }
+        updateFavoriteButtons();
+      }
+
+      function saveFavorites() {
+        try {
+          localStorage.setItem("mf_favorites", JSON.stringify(favorites));
+        } catch {}
+      }
+
+      function toggleFavorite(m) {
+        const idx = favorites.findIndex(f => f.id === m.id);
+        if (idx > -1) {
+          favorites.splice(idx, 1);
+        } else {
+          favorites.push(m);
+        }
+        saveFavorites();
+        updateFavoriteButtons();
+        if (document.getElementById("s-favorites").style.display !== "none") {
+          displayFavorites();
+        }
+      }
+
+      function updateFavoriteButtons() {
+        document.querySelectorAll('[id^="fav-"]').forEach(btn => {
+          const id = parseInt(btn.id.replace('fav-', ''));
+          const isFav = favorites.some(f => f.id === id);
+          btn.textContent = isFav ? "💔 Remove" : "❤️ Favorite";
+        });
+      }
+
+      function displayFavorites() {
+        const el = document.getElementById("favoritesList");
+        if (!favorites.length) {
+          el.innerHTML = '<div class="alert awn show">No favorites yet. Search medicines and add to favorites.</div>';
+          return;
+        }
+        el.innerHTML = `<p class="td mb1">Found <strong style="color:#f8fafc">${favorites.length}</strong> favorite(s)</p>`;
+        const grid = document.createElement("div");
+        grid.className = "mg";
+
+        favorites.forEach((m) => {
+          const sc =
+            m.stock_quantity > 20
+              ? "#6ee7b7"
+              : m.stock_quantity > 5
+                ? "#fde68a"
+                : "#fca5a5";
+          const rx = m.requires_prescription
+            ? '<span class="badge brx">Rx</span>'
+            : '<span class="badge botc">OTC</span>';
+          const del = m.delivery_available
+            ? '<span class="badge" style="background:rgba(6,182,212,.1);color:#67e8f9;">🚚 Delivery</span>'
+            : "";
+          const c = document.createElement("div");
+          c.className = "mc";
+          c.innerHTML = `
+      <div class="mn">${m.medicine_name}</div>
+      <div class="mb2">${m.brand || "—"} · ${m.category || ""}</div>
+      <div class="mp">${rupee(m.price)} <small>/ ${m.unit}</small></div>
+      <div class="mi" style="color:${sc}">📦 Stock: ${m.stock_quantity} ${m.unit}s</div>
+      <div class="mtags mt1">${rx} ${del}</div>
+      <div class="mpharm mt1">🏪 ${m.pharmacy_name}</div>
+      <div class="madr">📌 ${m.pharmacy_address}</div>
+      <div class="mc-actions">
+        <button class="btn bo" onclick='toggleFavorite(${JSON.stringify(m).replace(/"/g, "&quot;")})'>💔 Remove</button>
+        <button class="btn bo" onclick='openBook(${JSON.stringify(m).replace(/"/g, "&quot;")})'>🛒 Add to Cart</button>
+        <button class="btn bg" onclick='quickAdd(${JSON.stringify(m).replace(/"/g, "&quot;")})'>⚡ Buy Now</button>
+      </div>`;
+          grid.appendChild(c);
+        });
+        el.appendChild(grid);
       }
 
       function renderCart() {

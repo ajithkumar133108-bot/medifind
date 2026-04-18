@@ -160,11 +160,11 @@ async function doLogin() {
   const pass  = document.getElementById('passInp').value.trim();
   const btn   = document.getElementById('loginBtn');
 
-  if (!email) { showMsg('Please enter your email / username.', 'err'); return; }
-  if (!pass)  { showMsg('Please enter your password.', 'err'); return; }
+  if (!validateRequired(email, 'Email/Username')) return;
+  if (role !== 'ADMIN' && !validateEmail(email)) { showMsg('Please enter a valid email address.', 'err'); return; }
+  if (!validateRequired(pass, 'Password')) return;
 
-  btn.disabled   = true;
-  btn.textContent = 'Signing in…';
+  setLoading('loginBtn', true);
 
   try {
     const res  = await fetch('/api/login', {
@@ -181,13 +181,11 @@ async function doLogin() {
       else                               window.location.href = 'pages/user.html';
     } else {
       showMsg(data.error || 'Login failed. Try again.', 'err');
-      btn.disabled    = false;
-      btn.textContent = 'Sign In →';
+      setLoading('loginBtn', false);
     }
   } catch (e) {
     showMsg('❌ Cannot reach server. Is  node server.js  running?', 'err');
-    btn.disabled    = false;
-    btn.textContent = 'Sign In →';
+    setLoading('loginBtn', false);
   }
 }
 
