@@ -25,4 +25,7 @@ module.exports = {
     gmail: process.env.GMAIL || '',
     appPassword: process.env.GMAIL_PASS || '',
   },
+  googleMaps: {
+    apiKey: process.env.GOOGLE_MAPS_API_KEY || '',
+  },
 };

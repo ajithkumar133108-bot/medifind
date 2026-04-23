@@ -1,27 +1,58 @@
 ══════════════════════════════════════════════════════════════════
   MEDIFIND v3  –  Real-Time Medicine Availability & Booking System
   Final Year Project  |  GRTIET ECE Batch 14
-  Stack: Node.js + MySQL  |  VS Code  |  No Tomcat, No Java
-══════════════════════════════════════════════════════════════════
+  Stack: Node.js + Express + MySQL  |  JWT Auth | AI Suggestion Engine | Haversine Geo Search
+══════════════════════════════════════════════════════════
 
 NEW IN v3:
-  ✅  Add to Cart  (multi-item cart with qty controls)
-  ✅  Buy Now      (instant single-item order)
-  ✅  Cart Panel   (slide-in cart with checkout)
-  ✅  Email Notifications (Gmail SMTP via Nodemailer)
-  ✅  In-App Notifications (bell icon, unread badge)
-  ✅  Pharmacy gets email when new order arrives
-  ✅  User gets email when pharmacy confirms/rejects/dispatches
-  ✅  Notification panel for both user and pharmacy
-  ✅  Cart saved in browser (persists on refresh)
+  ✅  JWT Authentication + bcrypt password encryption
+  ✅  AI-based medicine recommendation engine
+  ✅  Symptom-driven suggestions and alternative medicines
+  ✅  Geolocation + Distance Calculation (Haversine Algorithm)
+  ✅  REST API Server (Node.js / Express) for search, orders, DB queries
+  ✅  MySQL database with Users, Medicines, Pharmacies, Orders
+  ✅  Live update-ready architecture for future WebSockets tracking
+  ✅  Optional online payment integration path (Razorpay)
+
+ARCHITECTURE OVERVIEW
+──────────────────────────────────────────────────────────────────
+
+  🔐 Authentication Layer
+      • JWT token-based auth
+      • Password hashing using bcrypt
+      • Role-based access control for User, Pharmacy, Admin
+
+  🧠 AI Recommendation Engine
+      • AI-based suggestion system for medicine alternatives
+      • Symptom keyword matching for smart recommendations
+      • Endpoint: /api/ai/suggest
+
+  🗺️ Smart Location Processing
+      • Browser geolocation support
+      • Distance calculation using Haversine formula
+      • Pharmacy search sorted by nearest first
+
+  📊 Backend API Layer
+      • Express REST API server handles requests for search, orders, notifications, and data
+      • Modular route controllers for maintainability
+
+  🗄️ Database Layer
+      • MySQL database stores Users, Medicines, Pharmacies, Orders
+      • Separated config and DB connection in config/
+
+  📡 Real-Time Tracking Upgrade
+      • Designed to support WebSockets / live updates for order tracking in future
+
+  💳 Payment Gateway (Optional)
+      • Razorpay / online payment integration can be added before final order confirmation
 
 ──────────────────────────────────────────────────────────────────
 FOLDER STRUCTURE
 ──────────────────────────────────────────────────────────────────
 
 MediFind/
-├── server.js          ← Complete backend (Node.js, no framework)
-├── package.json       ← 2 dependencies: mysql2 + nodemailer
+├── server.js          ← Complete backend (Node.js + Express)
+├── package.json       ← Dependencies include express, mysql2, bcryptjs, jsonwebtoken, nodemailer
 ├── database.sql       ← Run once in MySQL Workbench
 ├── README.txt         ← This file
 │
@@ -31,7 +62,8 @@ MediFind/
 │   ├── register.html  ← Registration (User + Pharmacy tabs)
 │   ├── user.html      ← Patient Dashboard
 │   │                     • Search medicine by name
-│   │                     • GPS location + radius filter
+│   │                     • Geolocation + Haversine distance search
+│   │                     • AI-based medicine suggestions and alternatives
 │   │                     • Add to Cart / Buy Now buttons
 │   │                     • Cart panel (slide-in)
 │   │                     • My Orders with live status
