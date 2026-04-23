@@ -90,7 +90,12 @@ INSERT INTO pharmacies (owner_name, pharmacy_name, email, password, phone, addre
 ('Priya Singh',  'Apollo Pharmacy',    'priya@apollo.com',    'priya123',  '9876543211', '34, T.Nagar, Chennai',    'Chennai', 13.0418, 80.2341),
 ('Suresh Babu',  'LifeCare Medical',   'suresh@lifecare.com', 'suresh123', '9876543212', '56, Adyar, Chennai',      'Chennai', 13.0067, 80.2554),
 ('Meena Devi',   'HealthPoint Pharma', 'meena@healthpt.com',  'meena123',  '9876543213', '78, Velachery, Chennai',  'Chennai', 12.9783, 80.2209),
-('Karthik R',    'CureMart Pharmacy',  'karthik@curemart.com','karthik123','9876543214', '90, Tambaram, Chennai',   'Chennai', 12.9249, 80.1000);
+('Karthik R',    'CureMart Pharmacy',  'karthik@curemart.com','karthik123','9876543214', '90, Tambaram, Chennai',   'Chennai', 12.9249, 80.1000),
+('Anil Kumar',   'City Health Pharmacy','anil@cityhealth.com','password123','9876543220','1st Cross, Sample Street, Chennai','Chennai', 13.055, 80.255),
+('Sunita Sharma','QuickCare Pharmacy', 'sunita@quickcare.com','password123','9876543221','Main Road, Sample Street, Chennai','Chennai', 13.045, 80.245),
+('Vikram Singh', 'Wellness Medicals',  'vikram@wellness.com', 'password123','9876543222','2nd Street, Near Park, Chennai','Chennai', 13.052, 80.248),
+('Anita Roy',    'Prime Care Pharmacy','anita@primecare.com', 'password123','9876543223','South Avenue, Chennai','Chennai', 13.048, 80.252),
+('Deepak Jain',  'Trust Meds',         'deepak@trustmeds.com','password123','9876543224','North Avenue, Chennai','Chennai', 13.051, 80.251);
 
 INSERT INTO medicines (pharmacy_id, medicine_name, brand, category, price, stock_quantity, unit, requires_prescription, delivery_available, description) VALUES
 (1, 'Paracetamol 500mg', 'Crocin',    'Pain Relief', 5.50, 200, 'Tablet', 0, 1, 'Fever and mild pain relief'),
@@ -117,7 +122,17 @@ INSERT INTO medicines (pharmacy_id, medicine_name, brand, category, price, stock
 (5, 'Ibuprofen 200mg',   'Advil',    'Pain Relief', 8.00, 160, 'Tablet', 0, 1, 'Standard OTC pain relief'),
 (5, 'Vitamin C 500mg',   'Limcee',   'Supplement', 12.00, 200, 'Tablet', 0, 1, 'Immunity booster'),
 (5, 'Omeprazole 40mg',   'Omez',     'Gastric',    22.00, 80, 'Capsule', 0, 1, 'Higher dose acid reducer'),
-(5, 'Paracetamol 500mg', 'Paracip',  'Pain Relief', 5.00, 180, 'Tablet', 0, 1, 'For pain and fever');
+(5, 'Paracetamol 500mg', 'Paracip',  'Pain Relief', 5.00, 180, 'Tablet', 0, 1, 'For pain and fever'),
+(6, 'Paracetamol 500mg', 'Crocin',    'Pain Relief', 5.50, 200, 'Tablet', 0, 1, 'Fever and mild pain relief'),
+(6, 'Amoxicillin 250mg', 'Mox',       'Antibiotic', 18.00, 80, 'Capsule', 1, 1, 'Broad spectrum antibiotic'),
+(7, 'Paracetamol 500mg', 'Crocin',    'Pain Relief', 5.50, 200, 'Tablet', 0, 1, 'Fever and mild pain relief'),
+(7, 'Amoxicillin 250mg', 'Mox',       'Antibiotic', 18.00, 80, 'Capsule', 1, 1, 'Broad spectrum antibiotic'),
+(8, 'Paracetamol 500mg', 'Crocin',    'Pain Relief', 5.50, 200, 'Tablet', 0, 1, 'Fever and mild pain relief'),
+(8, 'Amoxicillin 250mg', 'Mox',       'Antibiotic', 18.00, 80, 'Capsule', 1, 1, 'Broad spectrum antibiotic'),
+(9, 'Paracetamol 500mg', 'Crocin',    'Pain Relief', 5.50, 200, 'Tablet', 0, 1, 'Fever and mild pain relief'),
+(9, 'Amoxicillin 250mg', 'Mox',       'Antibiotic', 18.00, 80, 'Capsule', 1, 1, 'Broad spectrum antibiotic'),
+(10, 'Paracetamol 500mg', 'Crocin',    'Pain Relief', 5.50, 200, 'Tablet', 0, 1, 'Fever and mild pain relief'),
+(10, 'Amoxicillin 250mg', 'Mox',       'Antibiotic', 18.00, 80, 'Capsule', 1, 1, 'Broad spectrum antibiotic');
 
 INSERT INTO users (full_name, email, password, phone, address, latitude, longitude) VALUES
 ('Test User','user@test.com','user123','9000000001','No.5, Sample Street, Chennai',13.0500,80.2500);
