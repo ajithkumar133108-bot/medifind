@@ -814,6 +814,15 @@
           return;
         }
         const rad = document.getElementById("rad").value;
+
+        if (!uLat || !uLng) {
+          alert_(
+            "Please set your location first before searching within a radius.",
+            "warn",
+          );
+          return;
+        }
+
         const category = document.getElementById("category").value;
         const minPrice = document.getElementById("minPrice").value;
         const maxPrice = document.getElementById("maxPrice").value;
@@ -821,7 +830,7 @@
         res.innerHTML = '<div class="sc"><div class="spin"></div></div>';
 
         let url = `/api/search?medicine=${encodeURIComponent(name)}&radius=${rad}`;
-        if (uLat && uLng) url += `&lat=${uLat}&lng=${uLng}`;
+        url += `&lat=${uLat}&lng=${uLng}`;
         if (category) url += `&category=${encodeURIComponent(category)}`;
         if (minPrice) url += `&minPrice=${minPrice}`;
         if (maxPrice) url += `&maxPrice=${maxPrice}`;

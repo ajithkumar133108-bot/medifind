@@ -4,17 +4,22 @@ const { haversine } = require('../utils/haversine');
 const { suggestMedicines } = require('../utils/ai');
 
 async function searchMedicines(req, res) {
-  const { medicine = '', lat = 0, lng = 0, radius = 50, category = '', minPrice = '', maxPrice = '' } = req.query;
+  const { medicine = '', lat, lng, radius = 50, category = '', minPrice = '', maxPrice = '' } = req.query;
   const name = (medicine || '').trim();
   if (!name) return res.status(400).json({ error: 'Medicine name required.' });
+
+  const hasLocation = lat !== undefined && lat !== '' && lng !== undefined && lng !== '';
+  if (req.query.radius !== undefined && !hasLocation) {
+    return res.status(400).json({ error: 'Location latitude and longitude required for radius filtering.' });
+  }
 
   try {
     const rows = await medicineModel.searchMedicines(name);
     let results = rows.map((r) => ({
       ...r,
-      distanceKm: lat && lng ? haversine(parseFloat(lat), parseFloat(lng), +r.plat, +r.plng) : 0,
+      distanceKm: hasLocation ? haversine(parseFloat(lat), parseFloat(lng), +r.plat, +r.plng) : 0,
     }));
-    if (lat && lng) {
+    if (hasLocation) {
       results = results.filter((r) => r.distanceKm <= parseFloat(radius));
     }
     if (category) {
