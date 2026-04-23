@@ -9,6 +9,10 @@ async function api(path, body) {
 }
 
 function alert_(msg, type, secs) {
+  if (typeof showMsg === 'function') {
+    showMsg(msg, type);
+    return;
+  }
   const el = document.getElementById('alert');
   if (!el) return;
   const map = { ok:'aok', err:'aerr', warn:'awn', info:'ainf' };
