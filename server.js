@@ -20,6 +20,18 @@ const orderModel = require('./models/orderModel');
 
 const app = express();
 
+// ═══ DELIVERY TRACKING SIMULATION ═════════════════════════
+let deliveryLocation = { lat: 13.0827, lng: 80.2707 }; // initial
+app.get("/api/delivery-location", (req, res) => {
+  res.json(deliveryLocation);
+});
+setInterval(() => {
+  // Simulate movement
+  deliveryLocation.lat += 0.0005;
+  deliveryLocation.lng += 0.0005;
+}, 5000);
+// ══════════════════════════════════════════════════════════
+
 const razorpay = new Razorpay({
   key_id: "YOUR_KEY_ID",
   key_secret: "YOUR_SECRET_KEY",
