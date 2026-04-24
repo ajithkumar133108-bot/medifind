@@ -5,7 +5,7 @@ async function api(path, body) {
     ? { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body) }
     : { method:'GET' };
   
-  const baseUrl = 'http://10.67.132.109:3000';
+  const baseUrl = 'http://10.67.132.109:5000';
   const fullPath = path.startsWith('/') ? baseUrl + path : path;
 
   const r = await fetch(fullPath, o);

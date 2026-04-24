@@ -1459,7 +1459,7 @@
           if (trackingInterval) clearInterval(trackingInterval);
           trackingInterval = setInterval(async () => {
             try {
-              const res = await fetch("http://10.67.132.109:3000/api/delivery-location");
+              const res = await fetch("http://10.67.132.109:5000/api/delivery-location");
               const data = await res.json();
               if (data && data.lat) {
                 document.getElementById("statusText").innerHTML = "On the way...";
