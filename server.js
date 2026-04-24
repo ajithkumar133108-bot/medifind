@@ -14,8 +14,14 @@ const orderRoutes = require('./routes/order');
 const medicineRoutes = require('./routes/medicine');
 const notificationRoutes = require('./routes/notifications');
 const adminRoutes = require('./routes/admin');
+const Razorpay = require('razorpay');
 
 const app = express();
+
+const razorpay = new Razorpay({
+  key_id: "YOUR_KEY_ID",
+  key_secret: "YOUR_SECRET_KEY",
+});
 
 // app.use(helmet());
 app.use(cors({ origin: true, credentials: true }));
@@ -43,6 +49,23 @@ app.get('/pages/admin.html', requireRole('ADMIN'), (req, res) => {
 
 app.use(express.static(path.join(__dirname)));
 app.get('/api/health', (req, res) => res.json({ status: 'ok' }));
+
+app.post("/create-order", async (req, res) => {
+  const { amount } = req.body;
+
+  const options = {
+    amount: amount * 100, // convert to paise
+    currency: "INR",
+    receipt: "order_rcptid_" + Date.now(),
+  };
+
+  try {
+    const order = await razorpay.orders.create(options);
+    res.json(order);
+  } catch (err) {
+    res.status(500).send(err);
+  }
+});
 app.use((req, res) => res.status(404).send('Not found'));
 
 const port = config.port;

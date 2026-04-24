@@ -1021,11 +1021,10 @@
         btn.textContent = "⚡ Order Now";
         if (data.success && data.placed.length) {
           closeM("bookMod");
-          alert_(
-            `✅ Order #${data.placed[0].orderId} placed! Total: ${rupee(data.placed[0].total)}`,
-            "ok",
-            7,
-          );
+          const totalAmount = data.placed[0].total;
+          sessionStorage.setItem('paymentAmount', totalAmount);
+          sessionStorage.setItem('paymentOrderIds', data.placed[0].orderId);
+          window.location.href = "payment.html";
           selMed = null;
         } else {
           const err =
@@ -1255,11 +1254,12 @@
             saveCart();
             renderCart();
             closeCart();
-            alert_(
-              `✅ ${placed.length} order(s) placed! Check "My Orders" for status.`,
-              "ok",
-              8,
-            );
+            
+            const totalAmount = placed.reduce((sum, item) => sum + item.total, 0);
+            const orderIds = placed.map(p => p.orderId).join(',');
+            sessionStorage.setItem('paymentAmount', totalAmount);
+            sessionStorage.setItem('paymentOrderIds', orderIds);
+            window.location.href = "payment.html";
           }
           if (failed.length) {
             alert_(
