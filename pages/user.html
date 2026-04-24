@@ -1636,7 +1636,7 @@
       function openInMaps(lat, lng) {
         const defaultLat = uLat || 13.0827;
         const defaultLng = uLng || 80.2707;
-        const url = \`https://www.google.com/maps/dir/?api=1&origin=\${defaultLat},\${defaultLng}&destination=\${lat},\${lng}&travelmode=driving\`;
+        const url = `https://www.google.com/maps/dir/?api=1&origin=${defaultLat},${defaultLng}&destination=${lat},${lng}&travelmode=driving`;
         window.open(url, "_blank");
       }
     </script>
