@@ -279,9 +279,23 @@ async function loadOrders(){
 }
 function acts(o){
   if(o.status==='PENDING')    return`<button class="btn bo bsm" onclick="setS(${o.id},'CONFIRMED')">✅ Confirm</button> <button class="btn br bsm" onclick="setS(${o.id},'REJECTED')">❌ Reject</button>`;
-  if(o.status==='CONFIRMED')  return`<button class="btn ba bsm" onclick="setS(${o.id},'DISPATCHED')">🚚 Dispatch</button>`;
+  if(o.status==='CONFIRMED')  return o.delivery_type==='HOME_DELIVERY'
+    ? `<button class="btn ba bsm" onclick="assignDelivery(${o.id})">👤 Assign</button>`
+    : `<button class="btn ba bsm" onclick="setS(${o.id},'DISPATCHED')">🚚 Dispatch</button>`;
   if(o.status==='DISPATCHED') return`<button class="btn bo bsm" onclick="setS(${o.id},'DELIVERED')">✅ Delivered</button>`;
   return'<span class="td">—</span>';
+}
+
+async function assignDelivery(orderId){
+  const email = prompt("Enter Delivery Person Email (demo: delivery@test.com)");
+  if(!email) return;
+  const d = await api('/api/delivery/assign', { orderId, deliveryEmail: email });
+  if(d.success){
+    alert_('✅ Assigned delivery & dispatched order.', 'ok', 3);
+    loadOrders(); loadDash();
+  } else {
+    alert_(d.error || 'Assignment failed.', 'err');
+  }
 }
 async function setS(id,status){
   const d=await api('/api/order/status',{orderId:id,status});

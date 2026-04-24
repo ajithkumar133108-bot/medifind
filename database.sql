@@ -73,6 +73,30 @@ CREATE TABLE order_items (
   FOREIGN KEY (medicine_id) REFERENCES medicines(id) ON DELETE CASCADE
 );
 
+CREATE TABLE delivery_persons (
+  id         INT AUTO_INCREMENT PRIMARY KEY,
+  full_name  VARCHAR(100) NOT NULL,
+  email      VARCHAR(100) NOT NULL UNIQUE,
+  password   VARCHAR(255) NOT NULL,
+  phone      VARCHAR(20) DEFAULT '',
+  is_active  TINYINT(1) DEFAULT 1,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE deliveries (
+  id                 INT AUTO_INCREMENT PRIMARY KEY,
+  order_id           INT NOT NULL,
+  delivery_person_id INT NOT NULL,
+  status             ENUM('ASSIGNED','ACCEPTED','PICKED','ON_THE_WAY','DELIVERED') DEFAULT 'ASSIGNED',
+  current_latitude   DOUBLE DEFAULT NULL,
+  current_longitude  DOUBLE DEFAULT NULL,
+  assigned_at        TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at         TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE,
+  FOREIGN KEY (delivery_person_id) REFERENCES delivery_persons(id) ON DELETE CASCADE,
+  UNIQUE KEY uniq_delivery_order (order_id)
+);
+
 CREATE TABLE notifications (
   id          INT AUTO_INCREMENT PRIMARY KEY,
   user_id     INT DEFAULT NULL,
@@ -136,6 +160,9 @@ INSERT INTO medicines (pharmacy_id, medicine_name, brand, category, price, stock
 
 INSERT INTO users (full_name, email, password, phone, address, latitude, longitude) VALUES
 ('Test User','user@test.com','user123','9000000001','No.5, Sample Street, Chennai',13.0500,80.2500);
+
+INSERT INTO delivery_persons (full_name, email, password, phone) VALUES
+('Delivery Agent','delivery@test.com','delivery123','9000000099');
 
 SELECT 'Database ready!' AS Status;
 SELECT COUNT(*) AS pharmacies FROM pharmacies;

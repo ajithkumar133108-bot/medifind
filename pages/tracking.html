@@ -47,22 +47,19 @@
   </div>
 
   <script>
-    const statusSteps = ["Assigned", "Picked", "On the way", "Delivered"];
-    let statusIndex = 0;
-    let statusTimer = null;
+    let pollTimer = null;
 
-    function startTracking() {
-      const statusText = document.getElementById("statusText");
-      statusText.textContent = statusSteps[0];
-      if (statusTimer) clearInterval(statusTimer);
-      statusTimer = setInterval(() => {
-        statusIndex = (statusIndex + 1) % statusSteps.length;
-        statusText.textContent = statusSteps[statusIndex];
-      }, 5000);
+    async function pollTracking(orderIds) {
+      try {
+        const res = await fetch(`/api/tracking?orderIds=${encodeURIComponent(orderIds)}`);
+        const data = await res.json();
+        if (!data || !data.success) return;
+        document.getElementById("statusText").textContent = data.status || "Assigned";
+        if (data.status === "Delivered" && pollTimer) clearInterval(pollTimer);
+      } catch {}
     }
 
     (function initTracking() {
-      const status = localStorage.getItem("orderStatus");
       const orderIds = localStorage.getItem("currentOrderIds") || "N/A";
       const selectedPharmacy = JSON.parse(localStorage.getItem("selectedPharmacy") || "null");
       const pharmacyTxt = selectedPharmacy
@@ -71,11 +68,12 @@
       document.getElementById("pharmacyTxt").textContent = pharmacyTxt;
       document.getElementById("orderMeta").textContent = `Order IDs: ${orderIds}`;
 
-      if (status === "confirmed") {
-        startTracking();
-      } else {
-        document.getElementById("statusText").textContent = "Payment not confirmed yet.";
+      if (!orderIds || orderIds === "N/A") {
+        document.getElementById("statusText").textContent = "No order found.";
+        return;
       }
+      pollTracking(orderIds);
+      pollTimer = setInterval(() => pollTracking(orderIds), 3000);
     })();
   </script>
 </body>

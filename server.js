@@ -14,7 +14,73 @@ const orderRoutes = require('./routes/order');
 const medicineRoutes = require('./routes/medicine');
 const notificationRoutes = require('./routes/notifications');
 const adminRoutes = require('./routes/admin');
+const deliveryRoutes = require('./routes/delivery');
 const orderModel = require('./models/orderModel');
+
+// ═══ TRACKING (DEMO) ════════════════════════════════════════
+// In-memory sessions keyed by orderIds string.
+// This avoids DB dependency for hosted demos.
+const trackingSessions = new Map();
+
+function clamp01(n) {
+  return Math.max(0, Math.min(1, n));
+}
+
+function toNum(v) {
+  const n = typeof v === 'string' ? parseFloat(v) : Number(v);
+  return Number.isFinite(n) ? n : null;
+}
+
+function computeTracking(session) {
+  const now = Date.now();
+  const elapsedMs = Math.max(0, now - session.startedAt);
+
+  if (session.manual) {
+    return {
+      orderIds: session.orderIds,
+      startedAt: session.startedAt,
+      elapsedMs,
+      status: session.manual.status || 'On the way',
+      from: session.from || null,
+      to: session.to || null,
+      agent: session.manual.agent || null,
+      manual: true,
+    };
+  }
+
+  // Timeline (ms)
+  const T_ASSIGNED = 8000;
+  const T_PICKED = 20000;
+  const T_ONTHEWAY_END = 70000;
+
+  let status = 'Assigned';
+  if (elapsedMs >= T_ASSIGNED) status = 'Picked';
+  if (elapsedMs >= T_PICKED) status = 'On the way';
+  if (elapsedMs >= T_ONTHEWAY_END) status = 'Delivered';
+
+  const from = session.from;
+  const to = session.to;
+
+  // Move agent from pharmacy -> user during "On the way"
+  let agent = null;
+  if (from && to && from.lat != null && from.lng != null && to.lat != null && to.lng != null) {
+    const t = clamp01((elapsedMs - T_PICKED) / (T_ONTHEWAY_END - T_PICKED));
+    agent = {
+      lat: from.lat + (to.lat - from.lat) * t,
+      lng: from.lng + (to.lng - from.lng) * t,
+    };
+  }
+
+  return {
+    orderIds: session.orderIds,
+    startedAt: session.startedAt,
+    elapsedMs,
+    status,
+    from,
+    to,
+    agent,
+  };
+}
 
 
 const app = express();
@@ -45,6 +111,7 @@ app.use('/api', orderRoutes);
 app.use('/api', medicineRoutes);
 app.use('/api', notificationRoutes);
 app.use('/api', adminRoutes);
+app.use('/api', deliveryRoutes);
 
 // Protected static pages
 app.get('/pages/user.html', requireRole('USER'), (req, res) => {
@@ -55,6 +122,9 @@ app.get('/pages/pharmacy.html', requireRole('PHARMACY'), (req, res) => {
 });
 app.get('/pages/admin.html', requireRole('ADMIN'), (req, res) => {
   res.sendFile(path.join(__dirname, 'pages', 'admin.html'));
+});
+app.get('/pages/delivery-man.html', requireRole('DELIVERY'), (req, res) => {
+  res.sendFile(path.join(__dirname, 'pages', 'delivery-man.html'));
 });
 
 app.use(express.static(path.join(__dirname)));
@@ -96,10 +166,30 @@ app.post('/api/payment/verify', async (req, res) => {
 });
 
 app.post('/save-order', async (req, res) => {
-  const { orderIds, amount, selectedPharmacy } = req.body || {};
+  const { orderIds, amount, selectedPharmacy, userLocation } = req.body || {};
   if (!orderIds) {
     return res.status(400).json({ success: false, message: 'orderIds is required' });
   }
+
+  // Create/refresh tracking session (demo)
+  try {
+    const from = {
+      lat: toNum(selectedPharmacy?.latitude) ?? toNum(selectedPharmacy?.lat),
+      lng: toNum(selectedPharmacy?.longitude) ?? toNum(selectedPharmacy?.lng),
+      name: selectedPharmacy?.name || selectedPharmacy?.pharmacy_name || null,
+      address: selectedPharmacy?.address || null,
+    };
+    const to = {
+      lat: toNum(userLocation?.lat),
+      lng: toNum(userLocation?.lng),
+    };
+    trackingSessions.set(String(orderIds), {
+      orderIds: String(orderIds),
+      startedAt: Date.now(),
+      from: (from.lat != null && from.lng != null) ? from : null,
+      to: (to.lat != null && to.lng != null) ? to : null,
+    });
+  } catch {}
 
   try {
     const ids = String(orderIds)
@@ -128,6 +218,87 @@ app.post('/save-order', async (req, res) => {
       dbUpdated: false,
     });
   }
+});
+
+app.get('/api/tracking', (req, res) => {
+  const orderIds = req.query.orderIds;
+  if (!orderIds) return res.status(400).json({ success: false, message: 'orderIds is required' });
+  const session = trackingSessions.get(String(orderIds));
+  if (!session) {
+    return res.json({
+      success: true,
+      status: 'Assigned',
+      message: 'Tracking session not found yet. Complete payment first.',
+      agent: deliveryLocation,
+    });
+  }
+  // If DB delivery updates exist, use them for agent/status (more "real").
+  // This is optional and falls back to the demo simulation.
+  let tracking = computeTracking(session);
+  try {
+    const ids = String(orderIds).split(',').map((x) => parseInt(x.trim(), 10)).filter((n) => !Number.isNaN(n));
+    const orderId = ids[0];
+    if (orderId) {
+      const deliveryModel = require('./models/deliveryModel');
+      const d = await deliveryModel.getDeliveryByOrderId(orderId);
+      if (d) {
+        const statusMap = {
+          ASSIGNED: 'Assigned',
+          ACCEPTED: 'Assigned',
+          PICKED: 'Picked',
+          ON_THE_WAY: 'On the way',
+          DELIVERED: 'Delivered',
+        };
+        tracking = {
+          ...tracking,
+          status: statusMap[d.status] || tracking.status,
+          agent: (d.current_latitude != null && d.current_longitude != null)
+            ? { lat: Number(d.current_latitude), lng: Number(d.current_longitude) }
+            : tracking.agent,
+          manual: true,
+        };
+      }
+    }
+  } catch {}
+  return res.json({ success: true, ...tracking, agent: tracking.agent || deliveryLocation });
+});
+
+app.get('/api/tracking/sessions', (req, res) => {
+  const sessions = Array.from(trackingSessions.values()).map((s) => {
+    const t = computeTracking(s);
+    return {
+      orderIds: s.orderIds,
+      status: t.status,
+      startedAt: s.startedAt,
+      from: s.from || null,
+      to: s.to || null,
+      manual: !!s.manual,
+    };
+  });
+  res.json({ success: true, sessions });
+});
+
+app.post('/api/tracking/update', (req, res) => {
+  const { orderIds, lat, lng, status, done } = req.body || {};
+  if (!orderIds) return res.status(400).json({ success: false, message: 'orderIds is required' });
+
+  const session = trackingSessions.get(String(orderIds));
+  if (!session) return res.status(404).json({ success: false, message: 'Tracking session not found' });
+
+  if (done) {
+    session.manual = { status: 'Delivered', agent: session.manual?.agent || null };
+    return res.json({ success: true });
+  }
+
+  const agentLat = toNum(lat);
+  const agentLng = toNum(lng);
+  session.manual = {
+    status: status || session.manual?.status || 'On the way',
+    agent: (agentLat != null && agentLng != null) ? { lat: agentLat, lng: agentLng } : (session.manual?.agent || null),
+    updatedAt: Date.now(),
+  };
+  trackingSessions.set(String(orderIds), session);
+  return res.json({ success: true });
 });
 app.use((req, res) => res.status(404).send('Not found'));
 

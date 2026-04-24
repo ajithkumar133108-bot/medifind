@@ -74,9 +74,7 @@
   </div>
 
   <script>
-    const statusSteps = ["Assigned", "Picked", "On the way", "Delivered"];
-    let statusIndex = 0;
-    let map, userMarker, agentMarker, pollTimer, statusTimer;
+    let map, userMarker, agentMarker, pollTimer;
 
     function loadUserLocation() {
       try {
@@ -119,21 +117,17 @@
       document.getElementById("statusPill").textContent = text;
     }
 
-    function startStatusLoop() {
-      setStatus(statusSteps[0]);
-      if (statusTimer) clearInterval(statusTimer);
-      statusTimer = setInterval(() => {
-        statusIndex = Math.min(statusIndex + 1, statusSteps.length - 1);
-        setStatus(statusSteps[statusIndex]);
-      }, 5000);
-    }
-
-    async function pollAgentLocation() {
+    async function pollTracking(orderIds) {
       try {
-        const res = await fetch("/api/delivery-location");
+        const res = await fetch(`/api/tracking?orderIds=${encodeURIComponent(orderIds)}`);
         const data = await res.json();
-        if (!data || !data.lat) return;
-        const pos = { lat: +data.lat, lng: +data.lng };
+        if (!data || !data.success) return;
+        setStatus(data.status || "Assigned");
+
+        const pos = data.agent && data.agent.lat != null
+          ? { lat: +data.agent.lat, lng: +data.agent.lng }
+          : null;
+        if (!pos) return;
         if (!agentMarker) {
           agentMarker = new google.maps.Marker({
             position: pos,
@@ -144,6 +138,7 @@
         } else {
           agentMarker.setPosition(pos);
         }
+        if (data.status === "Delivered" && pollTimer) clearInterval(pollTimer);
       } catch {}
     }
 
@@ -155,13 +150,12 @@
 
       initMap();
 
-      const status = localStorage.getItem("orderStatus");
-      if (status === "confirmed") {
+      const orderIds = localStorage.getItem("currentOrderIds") || "";
+      if (orderIds) {
         document.getElementById("hint").textContent = "Tracking is live.";
-        startStatusLoop();
-        pollAgentLocation();
+        pollTracking(orderIds);
         if (pollTimer) clearInterval(pollTimer);
-        pollTimer = setInterval(pollAgentLocation, 5000);
+        pollTimer = setInterval(() => pollTracking(orderIds), 3000);
       } else {
         setStatus("Payment not confirmed");
       }

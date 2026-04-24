@@ -4,6 +4,7 @@ const validator = require('validator');
 const config = require('../config/config');
 const userModel = require('../models/userModel');
 const pharmacyModel = require('../models/pharmacyModel');
+const deliveryModel = require('../models/deliveryModel');
 
 function createToken(payload) {
   return jwt.sign(payload, config.jwtSecret, { expiresIn: config.jwtExpiresIn });
@@ -71,6 +72,17 @@ async function login(req, res) {
       const token = createToken({ id: pharmacy.id, role: 'PHARMACY', name: pharmacy.pharmacy_name, email: pharmacy.email });
       sendTokenCookie(res, token);
       return res.json({ success: true, role: 'PHARMACY', name: pharmacy.pharmacy_name, id: pharmacy.id });
+    }
+
+    if (normalizedRole === 'DELIVERY') {
+      const agent = await deliveryModel.findDeliveryPersonByEmail(trimmedEmail);
+      if (!agent) return res.status(401).json({ error: 'Wrong email or password.' });
+      const validPassword = await comparePasswords(agent.password, password);
+      if (!validPassword) return res.status(401).json({ error: 'Wrong email or password.' });
+      if (!agent.is_active) return res.status(401).json({ error: 'Account deactivated.' });
+      const token = createToken({ id: agent.id, role: 'DELIVERY', name: agent.full_name, email: agent.email });
+      sendTokenCookie(res, token);
+      return res.json({ success: true, role: 'DELIVERY', name: agent.full_name, id: agent.id });
     }
 
     const user = await userModel.findUserByEmail(trimmedEmail);

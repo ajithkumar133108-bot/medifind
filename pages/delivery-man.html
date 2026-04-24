@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+  <title>MediFind – Delivery Man</title>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Outfit',sans-serif;background:#060d1a;color:#f8fafc;min-height:100vh;padding:1rem;display:flex;align-items:center;justify-content:center}
+    .wrap{width:100%;max-width:920px;display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+    .card{background:linear-gradient(145deg,#0f1e35,#0a1628);border:1px solid rgba(255,255,255,.08);border-radius:18px;padding:1.2rem;box-shadow:0 20px 55px rgba(0,0,0,.55)}
+    .title{font-size:1.25rem;font-weight:800;margin-bottom:.25rem}
+    .sub{color:#94a3b8;font-size:.9rem;margin-bottom:1rem;line-height:1.5}
+    .fg{margin-bottom:.8rem}
+    label{display:block;color:#94a3b8;font-size:.78rem;font-weight:700;margin-bottom:.35rem}
+    input,select{width:100%;padding:.7rem .85rem;border-radius:12px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.05);color:#f8fafc;font-family:'Outfit',sans-serif;outline:none}
+    .row{display:grid;grid-template-columns:1fr 1fr;gap:.7rem}
+    .btns{display:grid;grid-template-columns:1fr 1fr;gap:.7rem;margin-top:.3rem}
+    button{padding:.8rem;border-radius:12px;border:none;font-weight:800;font-family:'Outfit',sans-serif;cursor:pointer}
+    .pri{background:linear-gradient(135deg,#10b981,#059669);color:#fff}
+    .sec{background:transparent;border:1px solid rgba(255,255,255,.18);color:#cbd5e1}
+    .warn{background:linear-gradient(135deg,#f59e0b,#d97706);color:#111827}
+    .danger{background:linear-gradient(135deg,#ef4444,#dc2626);color:#fff}
+    .box{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:1rem}
+    .mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.82rem;color:#cbd5e1;white-space:pre-wrap;word-break:break-word}
+    .tag{display:inline-flex;align-items:center;gap:.4rem;padding:.25rem .65rem;border-radius:999px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.04);color:#e2e8f0;font-size:.78rem;font-weight:700}
+    .ok{border-color:rgba(16,185,129,.28);background:rgba(16,185,129,.10);color:#6ee7b7}
+    @media (max-width: 900px){.wrap{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <div class="title">🚚 Delivery Man Panel</div>
+      <div class="sub">Login as a delivery agent, view assigned orders, and share live GPS location. This updates the tracking pages in real-time.</div>
+
+      <div class="box" style="margin-bottom:1rem">
+        <div class="row">
+          <div class="fg" style="margin-bottom:0">
+            <label>Delivery Email</label>
+            <input id="email" placeholder="delivery@test.com" value="delivery@test.com"/>
+          </div>
+          <div class="fg" style="margin-bottom:0">
+            <label>Password</label>
+            <input id="password" type="password" placeholder="delivery123" value="delivery123"/>
+          </div>
+        </div>
+        <div class="btns" style="margin-top:.7rem">
+          <button class="pri" onclick="loginDelivery()">Login</button>
+          <button class="sec" onclick="logout()">Logout</button>
+        </div>
+      </div>
+
+      <div class="fg">
+        <label>Assigned Orders (from DB)</label>
+        <select id="sessionSelect" onchange="onPickSession()">
+          <option value="">Loading…</option>
+        </select>
+      </div>
+
+      <div class="fg">
+        <label>Order IDs (manual override)</label>
+        <input id="orderIds" placeholder="e.g. 23 or 23,24" />
+      </div>
+
+      <div class="row">
+        <div class="fg">
+          <label>Status</label>
+          <select id="status">
+            <option>Assigned</option>
+            <option>Picked</option>
+            <option selected>On the way</option>
+            <option>Delivered</option>
+          </select>
+        </div>
+        <div class="fg">
+          <label>GPS</label>
+          <div class="tag" id="gpsTag">Stopped</div>
+        </div>
+      </div>
+
+      <div class="btns">
+        <button class="pri" onclick="startGps()">Start GPS</button>
+        <button class="sec" onclick="stopGps()">Stop GPS</button>
+      </div>
+
+      <div class="btns" style="margin-top:.7rem">
+        <button class="warn" onclick="sendOnce()">Send Update Once</button>
+        <button class="danger" onclick="markDelivered()">Mark Delivered</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="title">📡 Live Output</div>
+      <div class="sub">Last sent coordinates + server response.</div>
+      <div class="box">
+        <div class="mono" id="log">—</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let watchId = null;
+    let lastPos = null;
+
+    function setLog(obj) {
+      document.getElementById("log").textContent =
+        typeof obj === "string" ? obj : JSON.stringify(obj, null, 2);
+    }
+
+    function setGpsRunning(running) {
+      const tag = document.getElementById("gpsTag");
+      tag.textContent = running ? "Running" : "Stopped";
+      tag.className = running ? "tag ok" : "tag";
+    }
+
+    async function api(path, body) {
+      const opts = body
+        ? { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }
+        : {};
+      const res = await fetch(path, opts);
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Request failed");
+      return data;
+    }
+
+    async function loginDelivery() {
+      try {
+        const email = document.getElementById("email").value.trim();
+        const password = document.getElementById("password").value;
+        const d = await api("/api/login", { role: "DELIVERY", email, password });
+        setLog({ login: "ok", user: d });
+        await loadSessions();
+      } catch (e) {
+        setLog({ login: "failed", error: e.message });
+      }
+    }
+
+    async function logout() {
+      try {
+        await fetch("/api/logout", { method: "GET" });
+      } catch {}
+      setLog("Logged out.");
+      document.getElementById("sessionSelect").innerHTML = `<option value="">Login to load assigned orders…</option>`;
+    }
+
+    async function loadSessions() {
+      const sel = document.getElementById("sessionSelect");
+      try {
+        const data = await api("/api/delivery/my");
+        const deliveries = data.deliveries || [];
+        if (!deliveries.length) {
+          sel.innerHTML = `<option value="">No assigned deliveries yet</option>`;
+          return;
+        }
+        sel.innerHTML = `<option value="">Select an order…</option>` + deliveries.map(d => {
+          const label = `#${d.order_id} — ${d.status} — ${d.user_name}`;
+          return `<option value="${d.order_id}">${label}</option>`;
+        }).join("");
+      } catch (e) {
+        sel.innerHTML = `<option value="">Login required</option>`;
+      }
+    }
+
+    async function onPickSession() {
+      const sel = document.getElementById("sessionSelect");
+      const val = sel.value || "";
+      if (val) document.getElementById("orderIds").value = val;
+    }
+
+    function getOrderIds() {
+      return document.getElementById("orderIds").value.trim();
+    }
+
+    async function sendUpdate(lat, lng) {
+      const orderIds = getOrderIds();
+      const status = document.getElementById("status").value;
+      if (!orderIds) {
+        setLog("Enter Order IDs first.");
+        return;
+      }
+      const mapStatus = (s) => {
+        if (s === "Assigned") return "ASSIGNED";
+        if (s === "Picked") return "PICKED";
+        if (s === "On the way") return "ON_THE_WAY";
+        if (s === "Delivered") return "DELIVERED";
+        return "ON_THE_WAY";
+      };
+      const payload = { orderId: parseInt(orderIds, 10), status: mapStatus(status), lat, lng };
+      try {
+        const data = await api("/api/delivery/update", payload);
+        setLog({ sent: payload, response: data });
+      } catch (e) {
+        setLog({ sent: payload, error: e.message });
+      }
+    }
+
+    async function sendOnce() {
+      if (!lastPos) {
+        setLog("No GPS position yet. Start GPS or allow location permission.");
+        return;
+      }
+      await sendUpdate(lastPos.lat, lastPos.lng);
+    }
+
+    function startGps() {
+      if (!navigator.geolocation) {
+        setLog("Geolocation not supported on this device.");
+        return;
+      }
+      if (watchId != null) return;
+      setGpsRunning(true);
+      watchId = navigator.geolocation.watchPosition(async (pos) => {
+        lastPos = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+        await sendUpdate(lastPos.lat, lastPos.lng);
+      }, (err) => {
+        setLog("GPS error: " + err.message);
+        stopGps();
+      }, { enableHighAccuracy: true, maximumAge: 2000, timeout: 10000 });
+    }
+
+    function stopGps() {
+      if (watchId != null) navigator.geolocation.clearWatch(watchId);
+      watchId = null;
+      setGpsRunning(false);
+    }
+
+    async function markDelivered() {
+      const orderIds = getOrderIds();
+      if (!orderIds) { setLog("Enter Order IDs first."); return; }
+      try {
+        const data = await api("/api/delivery/update", { orderId: parseInt(orderIds, 10), status: "DELIVERED" });
+        setLog({ delivered: orderIds, response: data });
+      } catch (e) {
+        setLog({ delivered: orderIds, error: e.message });
+      }
+    }
+
+    // Try load, will show login required if not logged in.
+    loadSessions();
+  </script>
+</body>
+</html>

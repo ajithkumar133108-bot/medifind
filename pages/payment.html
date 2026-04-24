@@ -285,6 +285,8 @@
 
       if (result.success) {
         const selectedPharmacy = JSON.parse(localStorage.getItem('selectedPharmacy') || 'null');
+        let userLocation = null;
+        try { userLocation = JSON.parse(localStorage.getItem('mf_user_location') || 'null'); } catch (_) {}
         try {
           await fetchWithTimeout(apiUrl('/save-order'), {
             method: 'POST',
@@ -292,7 +294,8 @@
             body: JSON.stringify({
               orderIds: paymentOrderIds,
               amount,
-              selectedPharmacy
+              selectedPharmacy,
+              userLocation
             })
           });
         } catch (_) {}
