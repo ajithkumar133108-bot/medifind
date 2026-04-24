@@ -586,6 +586,8 @@
       function getLoc() {
         updateLocStatus();
         openM("locMod");
+        // Switch to GPS tab and trigger GPS automatically
+        switchLocTab('gps');
         if (navigator.geolocation) {
           getGPSLocation();
         }
@@ -669,11 +671,11 @@
 
       function getGPSLocation() {
         const gpsStatus = document.getElementById("gpsStatus");
-        gpsStatus.textContent = "📡 Requesting GPS access...";
+        if (gpsStatus) gpsStatus.textContent = "📡 Requesting GPS access...";
 
         if (!navigator.geolocation) {
-          gpsStatus.textContent =
-            "❌ Geolocation not supported in your browser";
+          if (gpsStatus) gpsStatus.textContent = "❌ Geolocation not supported in your browser";
+          alert_("❌ Geolocation not supported in your browser.", "err", 4);
           return;
         }
 
@@ -686,7 +688,9 @@
               JSON.stringify({ lat: uLat, lng: uLng }),
             );
             updateLocStatus();
-            gpsStatus.innerHTML = `✅ Location detected!<br/>Lat: ${uLat.toFixed(6)}, Lng: ${uLng.toFixed(6)}<br/>Accuracy: ±${Math.round(pos.coords.accuracy)}m`;
+            if (gpsStatus) {
+              gpsStatus.innerHTML = `✅ Location detected!<br/>Lat: ${uLat.toFixed(6)}, Lng: ${uLng.toFixed(6)}<br/>Accuracy: ±${Math.round(pos.coords.accuracy)}m`;
+            }
             alert_(
               `✅ GPS location: ${uLat.toFixed(4)}, ${uLng.toFixed(4)}`,
               "ok",
@@ -696,12 +700,11 @@
           (err) => {
             let errMsg = "GPS access denied or unavailable";
             if (err.code === 1)
-              errMsg =
-                "❌ Permission denied. Enable location in browser settings.";
+              errMsg = "❌ Permission denied. Enable location in browser settings.";
             else if (err.code === 2)
               errMsg = "⚠️ Position unavailable. Try outdoors with clear sky.";
             else if (err.code === 3) errMsg = "⏱️ Request timeout. Try again.";
-            gpsStatus.textContent = errMsg;
+            if (gpsStatus) gpsStatus.textContent = errMsg;
             alert_(errMsg, "warn", 3);
           },
           { timeout: 10000, enableHighAccuracy: true },
