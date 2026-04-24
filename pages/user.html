@@ -1385,10 +1385,8 @@
       }
 
       async function initMap() {
-        if (!uLat || !uLng) {
-          alert_("Please set your location first.", "warn");
-          return;
-        }
+        const defaultLat = uLat || 13.0827;
+        const defaultLng = uLng || 80.2707;
 
         const mapStyles = [
           { elementType: "geometry", stylers: [{ color: "#f5f5f5" }] },
@@ -1402,18 +1400,18 @@
         if (!leafMap || typeof leafMap.setCenter !== 'function') {
           leafMap = new google.maps.Map(mapEl, {
             zoom: 14,
-            center: { lat: uLat, lng: uLng },
+            center: { lat: defaultLat, lng: defaultLng },
             styles: mapStyles,
             disableDefaultUI: true,
             zoomControl: true
           });
         } else {
-          leafMap.setCenter({ lat: uLat, lng: uLng });
+          leafMap.setCenter({ lat: defaultLat, lng: defaultLng });
         }
 
         // Add User Location Marker (Blue Dot)
         new google.maps.Marker({
-          position: { lat: uLat, lng: uLng },
+          position: { lat: defaultLat, lng: defaultLng },
           map: leafMap,
           title: "Your Location",
           icon: {
@@ -1431,14 +1429,14 @@
 
         try {
           // Fetch all nearby pharmacies (50km)
-          const d = await api(`/api/pharmacies/nearby?lat=${uLat}&lng=${uLng}&radius=50`);
+          const d = await api(`/api/pharmacies/nearby?lat=${defaultLat}&lng=${defaultLng}&radius=50`);
           const pharmacies = d.results || [];
           
           let radius = 1;
           let nearby = [];
 
           while (nearby.length === 0 && radius <= 5) {
-            nearby = pharmacies.filter(p => getDistance(uLat, uLng, +p.latitude, +p.longitude) <= radius);
+            nearby = pharmacies.filter(p => getDistance(defaultLat, defaultLng, +p.latitude, +p.longitude) <= radius);
             if (nearby.length === 0) radius += 2;
           }
 
@@ -1449,10 +1447,10 @@
 
           if (list) list.innerHTML = '';
           const bounds = new google.maps.LatLngBounds();
-          bounds.extend({ lat: uLat, lng: uLng });
+          bounds.extend({ lat: defaultLat, lng: defaultLng });
 
           nearby.forEach(p => {
-            const dist = getDistance(uLat, uLng, +p.latitude, +p.longitude).toFixed(2);
+            const dist = getDistance(defaultLat, defaultLng, +p.latitude, +p.longitude).toFixed(2);
             bounds.extend({ lat: +p.latitude, lng: +p.longitude });
 
             const marker = new google.maps.Marker({
