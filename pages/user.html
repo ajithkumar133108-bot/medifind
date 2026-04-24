@@ -9,10 +9,8 @@
       rel="stylesheet"
     />
     <link rel="stylesheet" href="../css/style.css" />
-    <link
-      rel="stylesheet"
-      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-    />
+    <!-- Google Maps API (Replace YOUR_GOOGLE_MAPS_API_KEY with actual key) -->
+    <script src="https://maps.googleapis.com/maps/api/js?key=YOUR_GOOGLE_MAPS_API_KEY"></script>
   </head>
   <body>
     <!-- Dim overlay for side panels -->
@@ -181,8 +179,12 @@
               <div class="ps">All registered pharmacies</div>
             </div>
           </div>
-          <div class="card" style="padding: 0; overflow: hidden">
+          <div class="card" style="padding: 0; overflow: hidden; position: relative;">
             <div id="map" style="height: 470px; border-radius: 14px"></div>
+            <div id="sidebar" style="position:absolute; top:10px; left:10px; width:250px; max-height:450px; overflow-y:auto; background:white; padding:10px; border-radius:10px; box-shadow:0 2px 10px rgba(0,0,0,0.2); z-index: 10;">
+              <h3 style="color: #0f172a; margin-bottom: 0.5rem; font-size: 1.1rem;">Nearby Pharmacies</h3>
+              <div id="pharmacyList" style="color: #334155; font-size: 0.9rem;"></div>
+            </div>
           </div>
         </div>
       </main>
@@ -524,7 +526,6 @@
       </div>
     </div>
 
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="../js/app.js"></script>
     <script>
       // ═══ STATE ═══════════════════════════════════════════════
@@ -693,66 +694,70 @@
         if (window.locMapInstance) return;
 
         const container = document.getElementById("locMapContainer");
-        window.locMapInstance = L.map(container).setView(
-          [13.0827, 80.2707],
-          12,
-        );
+        const mapStyles = [
+          { elementType: "geometry", stylers: [{ color: "#f5f5f5" }] },
+          { elementType: "labels.text.fill", stylers: [{ color: "#616161" }] },
+          { elementType: "labels.text.stroke", stylers: [{ color: "#ffffff" }] },
+          { featureType: "road", elementType: "geometry", stylers: [{ color: "#ffffff" }] },
+          { featureType: "water", elementType: "geometry", stylers: [{ color: "#c9e6ff" }] }
+        ];
 
-        L.tileLayer(MAP_TILE_URL, {
-          attribution: MAP_TILE_ATTRIBUTION,
-          maxZoom: 19,
-        }).addTo(window.locMapInstance);
+        window.locMapInstance = new google.maps.Map(container, {
+          center: { lat: 13.0827, lng: 80.2707 },
+          zoom: 12,
+          styles: mapStyles,
+          disableDefaultUI: true,
+          zoomControl: true
+        });
 
         // Pharmacy locations
         const pharmacies = [
           { lat: 13.0827, lng: 80.2707, name: "MedPlus Pharmacy", icon: "🏪" },
           { lat: 13.0418, lng: 80.2341, name: "Apollo Pharmacy", icon: "🏪" },
           { lat: 13.0067, lng: 80.2554, name: "LifeCare Medical", icon: "🏥" },
-          {
-            lat: 12.9783,
-            lng: 80.2209,
-            name: "HealthPoint Pharma",
-            icon: "💊",
-          },
+          { lat: 12.9783, lng: 80.2209, name: "HealthPoint Pharma", icon: "💊" },
           { lat: 12.9249, lng: 80.1, name: "CureMart Pharmacy", icon: "🏪" },
           { lat: 13.05, lng: 80.25, name: "Center Point (Test)", icon: "📍" },
         ];
 
         // Add pharmacy markers
         pharmacies.forEach((pharmacy) => {
-          const marker = L.marker([pharmacy.lat, pharmacy.lng], {
-            icon: L.divIcon({
-              html: `<div style="font-size: 24px; cursor: pointer; filter: drop-shadow(0 0 2px rgba(0,0,0,0.3))">${pharmacy.icon}</div>`,
-              iconSize: [32, 32],
-              className: "pharmacy-marker",
-            }),
-          })
-            .bindPopup(
-              `<strong>${pharmacy.name}</strong><br/>Lat: ${pharmacy.lat.toFixed(4)}<br/>Lng: ${pharmacy.lng.toFixed(4)}<br/><button class="btn bg" style="width: 100%; margin-top: 8px" onclick="setLocationFromMap(${pharmacy.lat}, ${pharmacy.lng}, '${pharmacy.name}')">Select</button>`,
-              { maxWidth: 200 },
-            )
-            .addTo(window.locMapInstance);
+          const marker = new google.maps.Marker({
+            position: { lat: pharmacy.lat, lng: pharmacy.lng },
+            map: window.locMapInstance,
+            title: pharmacy.name,
+            icon: "https://maps.google.com/mapfiles/ms/icons/red-dot.png"
+          });
+
+          const info = new google.maps.InfoWindow({
+            content: `<div style="color: #0f172a; padding: 4px;"><strong>${pharmacy.name}</strong><br/>Lat: ${pharmacy.lat.toFixed(4)}<br/>Lng: ${pharmacy.lng.toFixed(4)}<br/><button class="btn bg" style="width: 100%; margin-top: 8px" onclick="setLocationFromMap(${pharmacy.lat}, ${pharmacy.lng}, '${pharmacy.name}')">Select</button></div>`
+          });
+
+          marker.addListener("click", () => info.open(window.locMapInstance, marker));
         });
 
         // Handle map clicks
-        window.locMapInstance.on("click", (e) => {
-          setLocationFromMap(e.latlng.lat, e.latlng.lng, "Custom Location");
+        window.locMapInstance.addListener("click", (e) => {
+          setLocationFromMap(e.latLng.lat(), e.latLng.lng(), "Custom Location");
         });
 
         // If location already set, show marker
         if (uLat && uLng) {
-          L.marker([uLat, uLng], {
-            icon: L.divIcon({
-              html: `<div style="font-size: 28px">📍</div>`,
-              iconSize: [32, 32],
-              className: "user-marker",
-            }),
-          }).addTo(window.locMapInstance);
-          window.locMapInstance.setView([uLat, uLng], 12);
+          window.locUserMarker = new google.maps.Marker({
+            position: { lat: uLat, lng: uLng },
+            map: window.locMapInstance,
+            title: "Your Location",
+            icon: {
+              path: google.maps.SymbolPath.CIRCLE,
+              scale: 8,
+              fillColor: "#4285F4",
+              fillOpacity: 1,
+              strokeWeight: 2,
+              strokeColor: "#fff"
+            }
+          });
+          window.locMapInstance.setCenter({ lat: uLat, lng: uLng });
         }
-
-        // Invalidate map size after a delay to fix rendering
-        setTimeout(() => window.locMapInstance?.invalidateSize(), 150);
       }
 
       function setLocationFromMap(lat, lng, name) {
@@ -767,23 +772,25 @@
 
         // Update map marker
         if (window.locMapInstance) {
-          window.locMapInstance.setView([lat, lng], 12);
-          // Remove previous user marker and add new one
-          window.locMapInstance.eachLayer((layer) => {
-            if (
-              layer instanceof L.Marker &&
-              layer.options.icon?.options.className === "user-marker"
-            ) {
-              window.locMapInstance.removeLayer(layer);
+          window.locMapInstance.setCenter({ lat, lng });
+          
+          if (window.locUserMarker) {
+            window.locUserMarker.setMap(null);
+          }
+          
+          window.locUserMarker = new google.maps.Marker({
+            position: { lat, lng },
+            map: window.locMapInstance,
+            title: "Your Location",
+            icon: {
+              path: google.maps.SymbolPath.CIRCLE,
+              scale: 8,
+              fillColor: "#4285F4",
+              fillOpacity: 1,
+              strokeWeight: 2,
+              strokeColor: "#fff"
             }
           });
-          L.marker([lat, lng], {
-            icon: L.divIcon({
-              html: `<div style="font-size: 28px">📍</div>`,
-              iconSize: [32, 32],
-              className: "user-marker",
-            }),
-          }).addTo(window.locMapInstance);
         }
       }
 
@@ -1357,38 +1364,128 @@
       }
 
       // ═══ MAP ════════════════════════════════════════════════
+      function getDistance(lat1, lon1, lat2, lon2) {
+        const R = 6371; // km
+        const toRad = (value) => value * Math.PI / 180;
+
+        const dLat = toRad(lat2 - lat1);
+        const dLon = toRad(lon2 - lon1);
+
+        const a =
+          Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+          Math.cos(toRad(lat1)) *
+          Math.cos(toRad(lat2)) *
+          Math.sin(dLon / 2) *
+          Math.sin(dLon / 2);
+
+        const c = 2 * Math.asin(Math.sqrt(a));
+        const distance = R * c;
+
+        return distance;
+      }
+
       async function initMap() {
-        if (leafMap) {
-          leafMap.invalidateSize();
+        if (!uLat || !uLng) {
+          alert_("Please set your location first.", "warn");
           return;
         }
-        leafMap = L.map("map").setView([uLat || 13.0827, uLng || 80.2707], 12);
-        L.tileLayer(MAP_TILE_URL, {
-          attribution: MAP_TILE_ATTRIBUTION,
-        }).addTo(leafMap);
-        if (uLat && uLng)
-          L.circleMarker([uLat, uLng], {
-            radius: 8,
-            color: "#10b981",
-            fillColor: "#10b981",
-            fillOpacity: 1,
-          })
-            .addTo(leafMap)
-            .bindPopup("<b>📍 You are here</b>")
-            .openPopup();
-        try {
-          const d = await api("/api/search?medicine=a&radius=100");
-          const seen = new Set();
-          (d.results || []).forEach((m) => {
-            if (seen.has(m.pharmacy_id)) return;
-            seen.add(m.pharmacy_id);
-            L.marker([+m.plat, +m.plng])
-              .addTo(leafMap)
-              .bindPopup(
-                `<b>🏪 ${m.pharmacy_name}</b><br/>${m.pharmacy_address}<br/>📞 ${m.pharmacy_phone || "—"}`,
-              );
+
+        const mapStyles = [
+          { elementType: "geometry", stylers: [{ color: "#f5f5f5" }] },
+          { elementType: "labels.text.fill", stylers: [{ color: "#616161" }] },
+          { elementType: "labels.text.stroke", stylers: [{ color: "#ffffff" }] },
+          { featureType: "road", elementType: "geometry", stylers: [{ color: "#ffffff" }] },
+          { featureType: "water", elementType: "geometry", stylers: [{ color: "#c9e6ff" }] }
+        ];
+
+        const mapEl = document.getElementById("map");
+        if (!leafMap || typeof leafMap.setCenter !== 'function') {
+          leafMap = new google.maps.Map(mapEl, {
+            zoom: 14,
+            center: { lat: uLat, lng: uLng },
+            styles: mapStyles,
+            disableDefaultUI: true,
+            zoomControl: true
           });
-        } catch {}
+        } else {
+          leafMap.setCenter({ lat: uLat, lng: uLng });
+        }
+
+        // Add User Location Marker (Blue Dot)
+        new google.maps.Marker({
+          position: { lat: uLat, lng: uLng },
+          map: leafMap,
+          title: "Your Location",
+          icon: {
+            path: google.maps.SymbolPath.CIRCLE,
+            scale: 8,
+            fillColor: "#4285F4",
+            fillOpacity: 1,
+            strokeWeight: 2,
+            strokeColor: "#fff"
+          }
+        });
+
+        const list = document.getElementById("pharmacyList");
+        if (list) list.innerHTML = '<div style="padding: 10px; color: #64748b;">Searching...</div>';
+
+        try {
+          // Fetch all nearby pharmacies (50km)
+          const d = await api(`/api/pharmacies/nearby?lat=${uLat}&lng=${uLng}&radius=50`);
+          const pharmacies = d.results || [];
+          
+          let radius = 1;
+          let nearby = [];
+
+          while (nearby.length === 0 && radius <= 5) {
+            nearby = pharmacies.filter(p => getDistance(uLat, uLng, +p.latitude, +p.longitude) <= radius);
+            if (nearby.length === 0) radius += 2;
+          }
+
+          if (nearby.length === 0) {
+            if (list) list.innerHTML = '<div style="padding: 10px; color: #f43f5e;">No pharmacies found within 5 km.</div>';
+            return;
+          }
+
+          if (list) list.innerHTML = '';
+          const bounds = new google.maps.LatLngBounds();
+          bounds.extend({ lat: uLat, lng: uLng });
+
+          nearby.forEach(p => {
+            const dist = getDistance(uLat, uLng, +p.latitude, +p.longitude).toFixed(2);
+            bounds.extend({ lat: +p.latitude, lng: +p.longitude });
+
+            const marker = new google.maps.Marker({
+              position: { lat: +p.latitude, lng: +p.longitude },
+              map: leafMap,
+              title: p.pharmacy_name,
+              icon: "https://maps.google.com/mapfiles/ms/icons/red-dot.png"
+            });
+
+            const info = new google.maps.InfoWindow({
+              content: `
+                <div style="font-family:Arial; color:#0f172a; padding:5px;">
+                  <b>${p.pharmacy_name}</b><br/>
+                  Distance: ${dist} km<br/>
+                  <span style="font-size:0.85em; color:#64748b;">${p.address}</span>
+                </div>
+              `
+            });
+
+            marker.addListener("click", () => info.open(leafMap, marker));
+
+            if (list) list.innerHTML += `
+              <div style="margin-bottom:10px; padding:8px; border-bottom:1px solid #eee; cursor:pointer;" onclick="leafMap.setCenter({lat: ${p.latitude}, lng: ${p.longitude}}); leafMap.setZoom(16);">
+                <b>${p.pharmacy_name}</b><br/>
+                ${dist} km away
+              </div>
+            `;
+          });
+
+          leafMap.fitBounds(bounds);
+        } catch (e) {
+          if (list) list.innerHTML = '<div style="padding: 10px; color: #f43f5e;">Failed to load pharmacies.</div>';
+        }
       }
     </script>
   </body>

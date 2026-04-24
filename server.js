@@ -15,6 +15,8 @@ const medicineRoutes = require('./routes/medicine');
 const notificationRoutes = require('./routes/notifications');
 const adminRoutes = require('./routes/admin');
 const Razorpay = require('razorpay');
+const crypto = require('crypto');
+const orderModel = require('./models/orderModel');
 
 const app = express();
 
@@ -64,6 +66,33 @@ app.post("/create-order", async (req, res) => {
     res.json(order);
   } catch (err) {
     res.status(500).send(err);
+  }
+});
+
+app.post('/api/payment/verify', async (req, res) => {
+  const { razorpay_order_id, razorpay_payment_id, razorpay_signature, orderIds } = req.body;
+  
+  const sign = razorpay_order_id + "|" + razorpay_payment_id;
+  const expectedSign = crypto
+    .createHmac("sha256", "YOUR_SECRET_KEY")
+    .update(sign.toString())
+    .digest("hex");
+
+  if (razorpay_signature === expectedSign) {
+    // Payment is authentic
+    try {
+      if (orderIds) {
+        const ids = orderIds.split(',');
+        for (const id of ids) {
+          await orderModel.updateOrderStatus(parseInt(id, 10), 'CONFIRMED');
+        }
+      }
+      res.json({ success: true, message: "Payment verified successfully" });
+    } catch (err) {
+      res.status(500).json({ success: false, message: "Database error" });
+    }
+  } else {
+    res.status(400).json({ success: false, message: "Invalid signature" });
   }
 });
 app.use((req, res) => res.status(404).send('Not found'));

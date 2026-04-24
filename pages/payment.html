@@ -100,11 +100,35 @@
           name: "MediFind",
           description: "Medicine Purchase",
           order_id: order.id,
-          handler: function (response) {
-            // Payment success!
-            sessionStorage.removeItem('paymentAmount');
-            sessionStorage.removeItem('paymentOrderIds');
-            window.location.href = "success.html";
+          handler: async function (response) {
+            btn.textContent = "Verifying...";
+            try {
+              const verifyRes = await fetch("/api/payment/verify", {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({
+                  razorpay_order_id: response.razorpay_order_id,
+                  razorpay_payment_id: response.razorpay_payment_id,
+                  razorpay_signature: response.razorpay_signature,
+                  orderIds: sessionStorage.getItem('paymentOrderIds')
+                })
+              });
+              const verifyData = await verifyRes.json();
+              
+              if (verifyData.success) {
+                sessionStorage.removeItem('paymentAmount');
+                sessionStorage.removeItem('paymentOrderIds');
+                window.location.href = "success.html";
+              } else {
+                alert("Payment Verification Failed! " + verifyData.message);
+                btn.disabled = false;
+                btn.textContent = "Try Again";
+              }
+            } catch (err) {
+              alert("Error verifying payment.");
+              btn.disabled = false;
+              btn.textContent = "Try Again";
+            }
           },
           theme: { color: "#10b981" }
         };
