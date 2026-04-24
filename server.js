@@ -89,6 +89,34 @@ app.post('/api/payment/verify', async (req, res) => {
     res.status(500).json({ success: false, message: "Database error" });
   }
 });
+
+app.post('/save-order', async (req, res) => {
+  const { orderIds, amount, selectedPharmacy } = req.body || {};
+  if (!orderIds) {
+    return res.status(400).json({ success: false, message: 'orderIds is required' });
+  }
+
+  try {
+    const ids = String(orderIds)
+      .split(',')
+      .map((id) => parseInt(id.trim(), 10))
+      .filter((id) => !Number.isNaN(id));
+
+    for (const id of ids) {
+      await orderModel.updateOrderStatus(id, 'CONFIRMED');
+    }
+
+    return res.json({
+      success: true,
+      message: 'Order saved successfully',
+      savedOrders: ids.length,
+      amount: Number(amount || 0),
+      pharmacy: selectedPharmacy || null,
+    });
+  } catch (err) {
+    return res.status(500).json({ success: false, message: 'Failed to save order' });
+  }
+});
 app.use((req, res) => res.status(404).send('Not found'));
 
 const port = config.port;

@@ -568,11 +568,37 @@
         if (!user) return;
         loadSavedLocation();
         updateLocStatus();
+        autoDetectLocationOnce();
         loadCart();
         loadFavorites();
         pollNotifications();
         setInterval(pollNotifications, 30000); // check every 30s
       };
+
+      function autoDetectLocationOnce() {
+        if (uLat && uLng) return;
+        if (!navigator.geolocation) return;
+
+        const key = "mf_auto_gps_last_attempt";
+        const last = parseInt(localStorage.getItem(key) || "0", 10);
+        const now = Date.now();
+        if (last && now - last < 24 * 60 * 60 * 1000) return;
+        localStorage.setItem(key, String(now));
+
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            uLat = pos.coords.latitude;
+            uLng = pos.coords.longitude;
+            localStorage.setItem(
+              "mf_user_location",
+              JSON.stringify({ lat: uLat, lng: uLng }),
+            );
+            updateLocStatus();
+          },
+          () => {},
+          { timeout: 7000, maximumAge: 5 * 60 * 1000, enableHighAccuracy: false },
+        );
+      }
 
       function afterShow(id) {
         if (id === "orders") loadOrders();

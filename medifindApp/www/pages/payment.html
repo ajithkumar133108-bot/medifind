@@ -53,6 +53,8 @@
     .pay-btn:hover{transform:translateY(-1px);box-shadow:0 8px 24px rgba(16,185,129,.4);}
     .pay-btn:active{transform:none;}
     .pay-btn:disabled{opacity:.7;cursor:not-allowed;transform:none;}
+    .pay-err{display:none;margin-top:.8rem;padding:.7rem .85rem;border-radius:10px;background:rgba(244,63,94,.12);border:1px solid rgba(244,63,94,.35);color:#fecdd3;font-size:.83rem;line-height:1.45;}
+    .pay-err.show{display:block;}
 
     /* Processing overlay */
     .overlay{display:none;position:fixed;inset:0;background:rgba(6,13,26,.95);z-index:100;flex-direction:column;align-items:center;justify-content:center;gap:1.5rem;}
@@ -158,6 +160,7 @@
   <button class="pay-btn" id="payBtn" onclick="processPayment()">
     🔒 Pay ₹<span id="payBtnAmt">0.00</span>
   </button>
+  <div class="pay-err" id="payError"></div>
   <button class="cancel-btn" onclick="window.location.href='user.html'">Cancel Order</button>
 
   <div class="divider">demo mode — no real charges</div>
@@ -199,8 +202,42 @@
     el.value = v;
   }
 
+  const API_BASE = (() => {
+    const savedBase = sessionStorage.getItem('apiBaseUrl') || localStorage.getItem('apiBaseUrl');
+    if (savedBase) return savedBase.replace(/\/+$/, '');
+    if (window.location.protocol === 'file:') return 'http://10.67.132.109:5000';
+    return '';
+  })();
+
+  function apiUrl(path) {
+    return `${API_BASE}${path}`;
+  }
+
+  function setPayError(message) {
+    const errorBox = document.getElementById('payError');
+    if (!message) {
+      errorBox.textContent = '';
+      errorBox.classList.remove('show');
+      return;
+    }
+    errorBox.textContent = message;
+    errorBox.classList.add('show');
+  }
+
+  async function fetchWithTimeout(url, options = {}, timeoutMs = 15000) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      return await fetch(url, { ...options, signal: controller.signal });
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
   // ── Payment flow ──────────────────────────────────────────
   async function processPayment() {
+    setPayError('');
+
     // Basic validation
     if (method === 'card') {
       const num = document.getElementById('cardNum').value.replace(/\s/g,'');
@@ -213,23 +250,27 @@
       if (!upi.includes('@')) { shake('upiId'); return; }
     }
 
-    document.getElementById('payBtn').disabled = true;
-    document.getElementById('processingOverlay').classList.add('show');
+    const payBtn = document.getElementById('payBtn');
+    const processingOverlay = document.getElementById('processingOverlay');
+    payBtn.disabled = true;
+    processingOverlay.classList.add('show');
+    let paymentSuccess = false;
 
     try {
       // Step 1: Create demo order
-      const orderRes = await fetch('http://10.67.132.109:5000/create-order', {
+      const orderRes = await fetchWithTimeout(apiUrl('/create-order'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ amount })
       });
+      if (!orderRes.ok) throw new Error('Unable to create payment order.');
       const order = await orderRes.json();
 
       // Step 2: Simulate 2.5s processing delay
       await delay(2500);
 
       // Step 3: Verify (confirm orders in DB)
-      const verifyRes = await fetch('http://10.67.132.109:5000/api/payment/verify', {
+      const verifyRes = await fetchWithTimeout(apiUrl('/api/payment/verify'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -239,10 +280,8 @@
           orderIds: sessionStorage.getItem('paymentOrderIds')
         })
       });
+      if (!verifyRes.ok) throw new Error('Payment verification failed.');
       const result = await verifyRes.json();
-
-      // Step 4: Show result
-      document.getElementById('processingOverlay').classList.remove('show');
 
       if (result.success) {
         const txnId = 'TXN#DEMO' + Math.floor(Math.random()*9000000+1000000);
@@ -250,14 +289,18 @@
         sessionStorage.removeItem('paymentAmount');
         sessionStorage.removeItem('paymentOrderIds');
         document.getElementById('successOverlay').classList.add('show');
+        paymentSuccess = true;
       } else {
-        alert('Payment failed: ' + result.message);
-        document.getElementById('payBtn').disabled = false;
+        setPayError('Payment failed: ' + (result.message || 'Unknown error.'));
       }
     } catch (e) {
-      document.getElementById('processingOverlay').classList.remove('show');
-      alert('Cannot reach server. Make sure node server.js is running.');
-      document.getElementById('payBtn').disabled = false;
+      const msg = e.name === 'AbortError'
+        ? 'Payment request timed out. Please check your connection and try again.'
+        : (e.message || 'Cannot reach payment server. Please try again.');
+      setPayError(msg);
+    } finally {
+      processingOverlay.classList.remove('show');
+      if (!paymentSuccess) payBtn.disabled = false;
     }
   }
 

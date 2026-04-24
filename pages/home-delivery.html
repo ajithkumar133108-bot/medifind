@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+  <title>MediFind – Home Delivery</title>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAQj1ADl5hsR6eLlEWh2rYDIJcCkTI-x4k"></script>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Outfit',sans-serif;background:#060d1a;color:#f8fafc;min-height:100vh;padding:1.2rem;display:flex;align-items:center;justify-content:center}
+    .wrap{width:100%;max-width:980px;display:grid;grid-template-columns:380px 1fr;gap:1rem}
+    .card{background:linear-gradient(145deg,#0f1e35,#0a1628);border:1px solid rgba(255,255,255,.08);border-radius:18px;padding:1.2rem;box-shadow:0 20px 55px rgba(0,0,0,.55)}
+    .title{font-size:1.3rem;font-weight:800;margin-bottom:.25rem}
+    .sub{color:#94a3b8;font-size:.9rem;margin-bottom:1rem;line-height:1.5}
+    .sec{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:.9rem;margin-bottom:.8rem}
+    .lbl{color:#94a3b8;font-size:.75rem;text-transform:uppercase;letter-spacing:.06em;margin-bottom:.35rem}
+    .val{color:#e2e8f0;font-size:.92rem;line-height:1.45}
+    .status{display:flex;align-items:center;justify-content:space-between;gap:.8rem}
+    .pill{padding:.35rem .7rem;border-radius:999px;background:rgba(16,185,129,.12);border:1px solid rgba(16,185,129,.28);color:#6ee7b7;font-weight:700;font-size:.8rem}
+    .muted{color:#94a3b8;font-size:.85rem}
+    .btns{display:grid;grid-template-columns:1fr 1fr;gap:.6rem;margin-top:.6rem}
+    .btn{border:none;border-radius:12px;padding:.8rem;font-weight:800;font-family:'Outfit',sans-serif;cursor:pointer}
+    .btn.pri{background:linear-gradient(135deg,#10b981,#059669);color:#fff}
+    .btn.sec{background:transparent;border:1px solid rgba(255,255,255,.15);color:#cbd5e1}
+    #map{height:520px;border-radius:18px;overflow:hidden}
+    @media (max-width: 900px){
+      .wrap{grid-template-columns:1fr}
+      #map{height:420px}
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <div class="title">🏠 Home Delivery</div>
+      <div class="sub">Your order is being delivered to your address. Live agent location updates every 5 seconds.</div>
+
+      <div class="sec">
+        <div class="lbl">Order IDs</div>
+        <div class="val" id="orderIds">—</div>
+      </div>
+
+      <div class="sec">
+        <div class="lbl">Delivery Address</div>
+        <div class="val" id="deliveryAddress">—</div>
+      </div>
+
+      <div class="sec">
+        <div class="lbl">Selected Pharmacy</div>
+        <div class="val" id="pharmacyText">—</div>
+      </div>
+
+      <div class="sec">
+        <div class="status">
+          <div>
+            <div class="lbl">Delivery Status</div>
+            <div class="val" id="statusText">Waiting for payment confirmation…</div>
+          </div>
+          <div class="pill" id="statusPill">—</div>
+        </div>
+        <div class="muted" style="margin-top:.55rem" id="hint">Complete payment to start tracking.</div>
+      </div>
+
+      <div class="btns">
+        <button class="btn sec" onclick="window.location.href='user.html'">← Dashboard</button>
+        <button class="btn pri" onclick="window.location.href='tracking.html'">Map Tracking →</button>
+      </div>
+    </div>
+
+    <div class="card" style="padding:0">
+      <div id="map"></div>
+    </div>
+  </div>
+
+  <script>
+    const statusSteps = ["Assigned", "Picked", "On the way", "Delivered"];
+    let statusIndex = 0;
+    let map, userMarker, agentMarker, pollTimer, statusTimer;
+
+    function loadUserLocation() {
+      try {
+        const saved = localStorage.getItem("mf_user_location");
+        if (!saved) return null;
+        const loc = JSON.parse(saved);
+        if (!loc || !loc.lat || !loc.lng) return null;
+        return { lat: +loc.lat, lng: +loc.lng };
+      } catch {
+        return null;
+      }
+    }
+
+    function initMap() {
+      const userLoc = loadUserLocation() || { lat: 13.0827, lng: 80.2707 };
+      map = new google.maps.Map(document.getElementById("map"), {
+        zoom: 14,
+        center: userLoc,
+        disableDefaultUI: true,
+        zoomControl: true
+      });
+
+      userMarker = new google.maps.Marker({
+        position: userLoc,
+        map,
+        title: "Delivery Address",
+        icon: {
+          path: google.maps.SymbolPath.CIRCLE,
+          scale: 8,
+          fillColor: "#4285F4",
+          fillOpacity: 1,
+          strokeWeight: 2,
+          strokeColor: "#fff"
+        }
+      });
+    }
+
+    function setStatus(text) {
+      document.getElementById("statusText").textContent = text;
+      document.getElementById("statusPill").textContent = text;
+    }
+
+    function startStatusLoop() {
+      setStatus(statusSteps[0]);
+      if (statusTimer) clearInterval(statusTimer);
+      statusTimer = setInterval(() => {
+        statusIndex = Math.min(statusIndex + 1, statusSteps.length - 1);
+        setStatus(statusSteps[statusIndex]);
+      }, 5000);
+    }
+
+    async function pollAgentLocation() {
+      try {
+        const res = await fetch("/api/delivery-location");
+        const data = await res.json();
+        if (!data || !data.lat) return;
+        const pos = { lat: +data.lat, lng: +data.lng };
+        if (!agentMarker) {
+          agentMarker = new google.maps.Marker({
+            position: pos,
+            map,
+            title: "Delivery Agent",
+            icon: "https://maps.google.com/mapfiles/ms/icons/green-dot.png"
+          });
+        } else {
+          agentMarker.setPosition(pos);
+        }
+      } catch {}
+    }
+
+    (function init() {
+      document.getElementById("orderIds").textContent = localStorage.getItem("currentOrderIds") || "—";
+      document.getElementById("deliveryAddress").textContent = localStorage.getItem("mf_delivery_address") || "—";
+      const pharmacy = JSON.parse(localStorage.getItem("selectedPharmacy") || "null");
+      document.getElementById("pharmacyText").textContent = pharmacy ? (pharmacy.name || "—") : "—";
+
+      initMap();
+
+      const status = localStorage.getItem("orderStatus");
+      if (status === "confirmed") {
+        document.getElementById("hint").textContent = "Tracking is live.";
+        startStatusLoop();
+        pollAgentLocation();
+        if (pollTimer) clearInterval(pollTimer);
+        pollTimer = setInterval(pollAgentLocation, 5000);
+      } else {
+        setStatus("Payment not confirmed");
+      }
+    })();
+  </script>
+</body>
+</html>

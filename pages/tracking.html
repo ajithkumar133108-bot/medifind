@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+  <title>MediFind - Live Tracking</title>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Outfit',sans-serif;background:#060d1a;color:#f8fafc;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:1rem}
+    .card{width:100%;max-width:460px;background:linear-gradient(145deg,#0f1e35,#0a1628);border:1px solid rgba(255,255,255,.08);border-radius:20px;padding:1.4rem}
+    .title{font-size:1.3rem;font-weight:800;margin-bottom:.3rem}
+    .sub{color:#94a3b8;font-size:.9rem;margin-bottom:1rem}
+    .pharmacy{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:.8rem;margin-bottom:1rem}
+    .pharmacy b{display:block;margin-bottom:.2rem}
+    .status{background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.25);border-radius:12px;padding:1rem;text-align:center}
+    .status .lbl{font-size:.78rem;color:#94a3b8;text-transform:uppercase;letter-spacing:.05em}
+    .status .txt{font-size:1.25rem;font-weight:700;color:#34d399;margin-top:.3rem}
+    .meta{margin-top:1rem;color:#94a3b8;font-size:.85rem}
+    .actions{display:grid;grid-template-columns:1fr 1fr;gap:.6rem;margin-top:1rem}
+    .btn{padding:.8rem;border-radius:10px;border:none;cursor:pointer;font-family:'Outfit',sans-serif;font-weight:700}
+    .btn.pri{background:linear-gradient(135deg,#10b981,#059669);color:#fff}
+    .btn.sec{background:transparent;border:1px solid rgba(255,255,255,.15);color:#cbd5e1}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="title">MediFind 🏥 Live Tracking</div>
+    <div class="sub">Track your medicine order in real time.</div>
+
+    <div class="pharmacy" id="pharmacyBox">
+      <b>Selected Pharmacy</b>
+      <span id="pharmacyTxt">Not available</span>
+    </div>
+
+    <div class="status">
+      <div class="lbl">Delivery Status</div>
+      <div class="txt" id="statusText">Waiting for payment confirmation...</div>
+    </div>
+
+    <div class="meta" id="orderMeta"></div>
+
+    <div class="actions">
+      <button class="btn sec" onclick="window.location.href='user.html'">Dashboard</button>
+      <button class="btn pri" onclick="window.location.href='success.html'">Order Summary</button>
+    </div>
+  </div>
+
+  <script>
+    const statusSteps = ["Assigned", "Picked", "On the way", "Delivered"];
+    let statusIndex = 0;
+    let statusTimer = null;
+
+    function startTracking() {
+      const statusText = document.getElementById("statusText");
+      statusText.textContent = statusSteps[0];
+      if (statusTimer) clearInterval(statusTimer);
+      statusTimer = setInterval(() => {
+        statusIndex = (statusIndex + 1) % statusSteps.length;
+        statusText.textContent = statusSteps[statusIndex];
+      }, 5000);
+    }
+
+    (function initTracking() {
+      const status = localStorage.getItem("orderStatus");
+      const orderIds = localStorage.getItem("currentOrderIds") || "N/A";
+      const selectedPharmacy = JSON.parse(localStorage.getItem("selectedPharmacy") || "null");
+      const pharmacyTxt = selectedPharmacy
+        ? `${selectedPharmacy.name}${selectedPharmacy.address ? " - " + selectedPharmacy.address : ""}`
+        : "Not available";
+      document.getElementById("pharmacyTxt").textContent = pharmacyTxt;
+      document.getElementById("orderMeta").textContent = `Order IDs: ${orderIds}`;
+
+      if (status === "confirmed") {
+        startTracking();
+      } else {
+        document.getElementById("statusText").textContent = "Payment not confirmed yet.";
+      }
+    })();
+  </script>
+</body>
+</html>

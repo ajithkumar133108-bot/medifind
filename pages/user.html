@@ -562,11 +562,41 @@
         if (!user) return;
         loadSavedLocation();
         updateLocStatus();
+        autoDetectLocationOnce();
         loadCart();
         loadFavorites();
         pollNotifications();
         setInterval(pollNotifications, 30000); // check every 30s
       };
+
+      function autoDetectLocationOnce() {
+        // Only attempt if location isn't already saved/set.
+        if (uLat && uLng) return;
+        if (!navigator.geolocation) return;
+
+        // Avoid re-prompting on every refresh: try again only after 24h.
+        const key = "mf_auto_gps_last_attempt";
+        const last = parseInt(localStorage.getItem(key) || "0", 10);
+        const now = Date.now();
+        if (last && now - last < 24 * 60 * 60 * 1000) return;
+        localStorage.setItem(key, String(now));
+
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            uLat = pos.coords.latitude;
+            uLng = pos.coords.longitude;
+            localStorage.setItem(
+              "mf_user_location",
+              JSON.stringify({ lat: uLat, lng: uLng }),
+            );
+            updateLocStatus();
+          },
+          () => {
+            // Permission denied / unavailable — keep manual flows.
+          },
+          { timeout: 7000, maximumAge: 5 * 60 * 1000, enableHighAccuracy: false },
+        );
+      }
 
       function afterShow(id) {
         if (id === "orders") loadOrders();
@@ -884,9 +914,10 @@
               : m.stock_quantity > 5
                 ? "#fde68a"
                 : "#fca5a5";
+          const distValue = Number(m.distanceKm || 0);
           const dist =
-            m.distanceKm > 0
-              ? `<div class="mdist">📍 ${m.distanceKm} km away</div>`
+            distValue > 0
+              ? `<div class="mdist">📍 ${distValue.toFixed(2)} km away</div>`
               : "";
           const rx = m.requires_prescription
             ? '<span class="badge brx">Rx</span>'
@@ -932,6 +963,7 @@
       // ═══ BOOK MODAL ══════════════════════════════════════════
       function openBook(m) {
         selMed = m;
+        saveSelectedPharmacyFromMedicine(m);
         document.getElementById("bookInfo").innerHTML =
           `<strong style="font-size:1rem;color:#f8fafc">${m.medicine_name}</strong> (${m.brand || "—"})<br/>
     💊 ${m.unit} | 💰 ${rupee(m.price)} each<br/>
@@ -948,6 +980,7 @@
       }
 
       function quickAdd(m) {
+        saveSelectedPharmacyFromMedicine(m);
         // Add to cart with default PICKUP and open cart
         const existing = cart.find((i) => i.med.id === m.id);
         if (existing) {
@@ -1040,9 +1073,15 @@
         btn.textContent = "⚡ Order Now";
         if (data.success && data.placed.length) {
           closeM("bookMod");
-          const totalAmount = data.placed[0].total;
-          sessionStorage.setItem('paymentAmount', totalAmount);
-          sessionStorage.setItem('paymentOrderIds', data.placed[0].orderId);
+          if (type === "HOME_DELIVERY") {
+            localStorage.setItem("mf_has_home_delivery", "true");
+            localStorage.setItem("mf_delivery_address", addr);
+          } else {
+            localStorage.removeItem("mf_has_home_delivery");
+            localStorage.removeItem("mf_delivery_address");
+          }
+          const totalAmount = data.placed.reduce((sum, item) => sum + item.total, 0);
+          setPaymentContext(data.placed, totalAmount);
           window.location.href = "payment.html";
           selMed = null;
         } else {
@@ -1245,6 +1284,13 @@
           alert_("Enter delivery address for home delivery items.", "err");
           return;
         }
+        if (hasHome) {
+          localStorage.setItem("mf_has_home_delivery", "true");
+          localStorage.setItem("mf_delivery_address", globalAddr);
+        } else {
+          localStorage.removeItem("mf_has_home_delivery");
+          localStorage.removeItem("mf_delivery_address");
+        }
 
         const items = cart.map((i) => ({
           medicineId: i.med.id,
@@ -1266,6 +1312,9 @@
           const placed = data.placed || [],
             failed = data.failed || [];
           if (placed.length) {
+            const firstPlacedItem = placed[0];
+            const sourceCartItem = cart.find((i) => i.med.medicine_name === firstPlacedItem?.medicineName);
+            if (sourceCartItem && sourceCartItem.med) saveSelectedPharmacyFromMedicine(sourceCartItem.med);
             cart = cart.filter(
               (i) =>
                 !placed.some((p) => p.medicineName === i.med.medicine_name),
@@ -1275,9 +1324,7 @@
             closeCart();
             
             const totalAmount = placed.reduce((sum, item) => sum + item.total, 0);
-            const orderIds = placed.map(p => p.orderId).join(',');
-            sessionStorage.setItem('paymentAmount', totalAmount);
-            sessionStorage.setItem('paymentOrderIds', orderIds);
+            setPaymentContext(placed, totalAmount);
             window.location.href = "payment.html";
           }
           if (failed.length) {
@@ -1415,6 +1462,26 @@
         const distance = R * c;
 
         return distance;
+      }
+
+      function saveSelectedPharmacyFromMedicine(med) {
+        if (!med || !med.pharmacy_name) return;
+        const pharmacy = {
+          name: med.pharmacy_name,
+          address: med.pharmacy_address || "",
+          latitude: med.latitude || null,
+          longitude: med.longitude || null,
+        };
+        localStorage.setItem("selectedPharmacy", JSON.stringify(pharmacy));
+      }
+
+      function setPaymentContext(placed, amount) {
+        if (!Array.isArray(placed) || !placed.length) return;
+        const orderIds = placed.map((p) => p.orderId).join(",");
+        sessionStorage.setItem("paymentAmount", amount);
+        sessionStorage.setItem("paymentOrderIds", orderIds);
+        localStorage.setItem("orderStatus", "pending");
+        localStorage.setItem("currentOrderIds", orderIds);
       }
 
       async function initMap() {
@@ -1567,6 +1634,15 @@
       function highlightMapPharmacy(idx) {
         if (!window.mapPharmacyItems || !window.mapPharmacyItems[idx]) return;
         const item = window.mapPharmacyItems[idx];
+        localStorage.setItem(
+          "selectedPharmacy",
+          JSON.stringify({
+            name: item.name,
+            address: "",
+            latitude: +item.lat,
+            longitude: +item.lng,
+          }),
+        );
         leafMap.setCenter({ lat: +item.lat, lng: +item.lng });
         leafMap.setZoom(16);
         item.marker.setAnimation(google.maps.Animation.BOUNCE);
