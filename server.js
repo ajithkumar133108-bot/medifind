@@ -220,7 +220,7 @@ app.post('/save-order', async (req, res) => {
   }
 });
 
-app.get('/api/tracking', (req, res) => {
+app.get('/api/tracking', async (req, res) => {
   const orderIds = req.query.orderIds;
   if (!orderIds) return res.status(400).json({ success: false, message: 'orderIds is required' });
   const session = trackingSessions.get(String(orderIds));
