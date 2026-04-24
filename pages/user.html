@@ -541,6 +541,7 @@
         selMed = null,
         leafMap = null;
       let favorites = []; // [medicine objects]
+      let cart = []; // [cart items]
 
       // ═══ INIT ════════════════════════════════════════════════
       window.onload = async function () {
@@ -886,9 +887,9 @@
       <div class="madr">📌 ${m.pharmacy_address}</div>
       ${dist}
       <div class="mc-actions">
-        <button class="btn bo" onclick='toggleFavorite(${JSON.stringify(m).replace(/"/g, "&quot;")})' id="fav-${m.id}">${favorites.some(f => f.id === m.id) ? "💔 Remove" : "❤️ Favorite"}</button>
-        <button class="btn bo" onclick='openBook(${JSON.stringify(m).replace(/"/g, "&quot;")})'>🛒 Add to Cart</button>
-        <button class="btn bg" onclick='quickAdd(${JSON.stringify(m).replace(/"/g, "&quot;")})'>⚡ Buy Now</button>
+        <button class="btn bo" onclick='toggleFavorite(${JSON.stringify(m).replace(/"/g, "&quot;").replace(/'/g, "&#39;")})' id="fav-${m.id}">${favorites.some(f => f.id === m.id) ? "💔 Remove" : "❤️ Favorite"}</button>
+        <button class="btn bo" onclick='openBook(${JSON.stringify(m).replace(/"/g, "&quot;").replace(/'/g, "&#39;")})'>🛒 Add to Cart</button>
+        <button class="btn bg" onclick='quickAdd(${JSON.stringify(m).replace(/"/g, "&quot;").replace(/'/g, "&#39;")})'>⚡ Buy Now</button>
       </div>`;
           grid.appendChild(c);
         });
@@ -1123,9 +1124,9 @@
       <div class="mpharm mt1">🏪 ${m.pharmacy_name}</div>
       <div class="madr">📌 ${m.pharmacy_address}</div>
       <div class="mc-actions">
-        <button class="btn bo" onclick='toggleFavorite(${JSON.stringify(m).replace(/"/g, "&quot;")})'>💔 Remove</button>
-        <button class="btn bo" onclick='openBook(${JSON.stringify(m).replace(/"/g, "&quot;")})'>🛒 Add to Cart</button>
-        <button class="btn bg" onclick='quickAdd(${JSON.stringify(m).replace(/"/g, "&quot;")})'>⚡ Buy Now</button>
+        <button class="btn bo" onclick='toggleFavorite(${JSON.stringify(m).replace(/"/g, "&quot;").replace(/'/g, "&#39;")})'>💔 Remove</button>
+        <button class="btn bo" onclick='openBook(${JSON.stringify(m).replace(/"/g, "&quot;").replace(/'/g, "&#39;")})'>🛒 Add to Cart</button>
+        <button class="btn bg" onclick='quickAdd(${JSON.stringify(m).replace(/"/g, "&quot;").replace(/'/g, "&#39;")})'>⚡ Buy Now</button>
       </div>`;
           grid.appendChild(c);
         });
