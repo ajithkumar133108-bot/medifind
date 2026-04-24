@@ -147,7 +147,7 @@ async function regUser() {
   setLoading('uBtn', true);
 
   try {
-    const res  = await fetch('/api/register/user', {
+    const res  = await fetch('http://10.67.132.109:5000/api/register/user', {
       method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({
         fullName: name, email, password: pass,
@@ -190,10 +190,10 @@ async function regPharma() {
   setLoading('pBtn', true);
 
   try {
-    const res  = await fetch('/api/register/pharmacy', {
+    const res  = await fetch('http://10.67.132.109:5000/api/register/pharmacy', {
       method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({
-        ownerName:pname, pharmacyName:pname, ownerName:owner,
+        pharmacyName:pname, ownerName:owner,
         email, password:pass,
         phone:   v('p_phone'),
         address: addr, city, latitude:lat, longitude:lng

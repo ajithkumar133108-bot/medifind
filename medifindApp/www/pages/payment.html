@@ -81,7 +81,7 @@
       btn.textContent = "Initializing...";
 
       try {
-        const res = await fetch("/create-order", {
+        const res = await fetch("http://10.67.132.109:5000/create-order", {
           method: "POST",
           headers: {"Content-Type": "application/json"},
           body: JSON.stringify({ amount })
@@ -94,7 +94,7 @@
         }
 
         const options = {
-          key: "YOUR_KEY_ID", // TODO: Replace with real key ID
+          key: order.key_id || "YOUR_KEY_ID", // Passed from server
           amount: order.amount,
           currency: "INR",
           name: "MediFind",
@@ -103,7 +103,7 @@
           handler: async function (response) {
             btn.textContent = "Verifying...";
             try {
-              const verifyRes = await fetch("/api/payment/verify", {
+              const verifyRes = await fetch("http://10.67.132.109:5000/api/payment/verify", {
                 method: "POST",
                 headers: {"Content-Type": "application/json"},
                 body: JSON.stringify({

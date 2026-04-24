@@ -846,9 +846,11 @@
 
         if (!uLat || !uLng) {
           alert_(
-            "Please set your location first before searching within a radius.",
+            "📍 Location required – opening location picker...",
             "warn",
+            3,
           );
+          getLoc();
           return;
         }
 

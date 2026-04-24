@@ -53,10 +53,15 @@ function setLoading(btnId, loading) {
 }
 
 function showSec(id) {
-  document.querySelectorAll('[data-sec]').forEach(s => s.classList.add('sh'));
+  // Hide all sections — support both 'sh' (pharmacy/user) and 'sec-hidden' (admin)
+  document.querySelectorAll('[data-sec]').forEach(s => {
+    s.classList.add('sh');
+    s.classList.add('sec-hidden');
+  });
   const el = document.getElementById('s-'+id);
-  if (el) el.classList.remove('sh');
-  document.querySelectorAll('.nb').forEach(b => b.classList.toggle('active', b.dataset.sec===id));
+  if (el) { el.classList.remove('sh'); el.classList.remove('sec-hidden'); }
+  // Highlight active nav button — support both .nb and .nav-btn classes
+  document.querySelectorAll('.nb, .nav-btn').forEach(b => b.classList.toggle('active', b.dataset.sec===id));
   if (typeof afterShow==='function') afterShow(id);
 }
 
@@ -71,7 +76,12 @@ function badge(s) {
   return `<span class="badge ${m[s]||''}">${s}</span>`;
 }
 
-function logout() { window.location.href='/api/logout'; }
+function logout() {
+  // Clear session and redirect to login
+  fetch('http://10.67.132.109:5000/api/logout', { method:'GET', credentials:'include' })
+    .catch(()=>{})
+    .finally(() => { window.location.href = '../index.html'; });
+}
 
 async function checkAuth(role) {
   let d;

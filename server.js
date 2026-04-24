@@ -33,8 +33,8 @@ setInterval(() => {
 // ══════════════════════════════════════════════════════════
 
 const razorpay = new Razorpay({
-  key_id: "YOUR_KEY_ID",
-  key_secret: "YOUR_SECRET_KEY",
+  key_id: process.env.RAZORPAY_KEY_ID,
+  key_secret: process.env.RAZORPAY_KEY_SECRET,
 });
 
 // app.use(helmet());
@@ -75,7 +75,8 @@ app.post("/create-order", async (req, res) => {
 
   try {
     const order = await razorpay.orders.create(options);
-    res.json(order);
+    // Return key_id so mobile client doesn't need it hardcoded
+    res.json({ ...order, key_id: process.env.RAZORPAY_KEY_ID });
   } catch (err) {
     res.status(500).send(err);
   }
@@ -86,7 +87,7 @@ app.post('/api/payment/verify', async (req, res) => {
   
   const sign = razorpay_order_id + "|" + razorpay_payment_id;
   const expectedSign = crypto
-    .createHmac("sha256", "YOUR_SECRET_KEY")
+    .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
     .update(sign.toString())
     .digest("hex");
 
