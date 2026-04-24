@@ -4,151 +4,272 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1.0" />
   <title>MediFind – Secure Payment</title>
-  <link
-    href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Playfair+Display:wght@700&display=swap"
-    rel="stylesheet"
-  />
-  <link rel="stylesheet" href="../css/style.css" />
-  <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Playfair+Display:wght@700&display=swap" rel="stylesheet"/>
   <style>
-    body {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      min-height: 100vh;
-      background: #0f172a;
-      color: #f8fafc;
-    }
-    .payment-card {
-      background: #1e293b;
-      padding: 3rem;
-      border-radius: 16px;
-      text-align: center;
-      max-width: 400px;
-      width: 100%;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-    }
-    .payment-card h2 {
-      margin-bottom: 1rem;
-      color: #10b981;
-    }
-    .payment-card p {
-      color: #cbd5e1;
-      margin-bottom: 2rem;
-    }
-    .amount-display {
-      font-size: 2.5rem;
-      font-weight: 800;
-      color: #f8fafc;
-      margin-bottom: 2rem;
-    }
-    .btn.bg {
-      width: 100%;
-      padding: 1rem;
-      font-size: 1.1rem;
-    }
+    *{box-sizing:border-box;margin:0;padding:0;}
+    body{font-family:'Outfit',sans-serif;background:#060d1a;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:1.5rem;}
+
+    .card{background:linear-gradient(145deg,#0f1e35,#0a1628);border:1px solid rgba(255,255,255,.08);border-radius:24px;padding:2.5rem;width:100%;max-width:420px;box-shadow:0 40px 80px rgba(0,0,0,.6);}
+
+    /* Header */
+    .hdr{text-align:center;margin-bottom:2rem;}
+    .lock-icon{font-size:2.5rem;margin-bottom:.6rem;}
+    .hdr h2{font-family:'Playfair Display',serif;color:#f8fafc;font-size:1.5rem;}
+    .hdr p{color:#64748b;font-size:.83rem;margin-top:.3rem;}
+    .secure-badge{display:inline-flex;align-items:center;gap:.4rem;background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.25);color:#34d399;font-size:.72rem;font-weight:700;padding:.3rem .8rem;border-radius:100px;margin-top:.6rem;text-transform:uppercase;letter-spacing:.05em;}
+    .dot{width:6px;height:6px;background:#34d399;border-radius:50%;animation:blink 1.5s infinite;}
+    @keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
+
+    /* Amount */
+    .amount-box{background:rgba(16,185,129,.07);border:1px solid rgba(16,185,129,.18);border-radius:14px;padding:1.2rem;text-align:center;margin-bottom:1.8rem;}
+    .amount-lbl{color:#64748b;font-size:.78rem;font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin-bottom:.4rem;}
+    .amount-val{font-size:2.6rem;font-weight:800;color:#f8fafc;letter-spacing:-.02em;}
+    .amount-val span{color:#10b981;}
+
+    /* Payment methods */
+    .methods{display:grid;grid-template-columns:1fr 1fr;gap:.6rem;margin-bottom:1.5rem;}
+    .method{background:rgba(255,255,255,.04);border:1.5px solid rgba(255,255,255,.09);border-radius:12px;padding:.9rem;text-align:center;cursor:pointer;transition:.15s;}
+    .method:hover{border-color:rgba(16,185,129,.4);background:rgba(16,185,129,.06);}
+    .method.on{border-color:#10b981;background:rgba(16,185,129,.1);}
+    .method-ico{font-size:1.5rem;margin-bottom:.3rem;}
+    .method-lbl{font-size:.75rem;font-weight:600;color:#94a3b8;}
+    .method.on .method-lbl{color:#34d399;}
+
+    /* Card form */
+    .form-sec{display:none;}
+    .form-sec.show{display:block;}
+    .fg{margin-bottom:1rem;}
+    .fg label{display:block;font-size:.75rem;font-weight:600;color:#94a3b8;margin-bottom:.4rem;}
+    .fg input{width:100%;padding:.72rem 1rem;background:rgba(255,255,255,.05);border:1.5px solid rgba(255,255,255,.1);border-radius:10px;color:#f8fafc;font-family:'Outfit',sans-serif;font-size:.9rem;outline:none;transition:.2s;letter-spacing:.04em;}
+    .fg input:focus{border-color:#10b981;background:rgba(16,185,129,.05);}
+    .fg input::placeholder{color:#334155;letter-spacing:0;}
+    .row2{display:grid;grid-template-columns:1fr 1fr;gap:.8rem;}
+
+    /* UPI form */
+    .upi-hint{background:rgba(99,102,241,.08);border:1px solid rgba(99,102,241,.2);border-radius:10px;padding:.9rem;font-size:.83rem;color:#a5b4fc;margin-bottom:1rem;text-align:center;}
+
+    /* Pay button */
+    .pay-btn{width:100%;padding:1rem;background:linear-gradient(135deg,#10b981,#059669);border:none;border-radius:12px;color:#fff;font-family:'Outfit',sans-serif;font-size:1rem;font-weight:700;cursor:pointer;transition:.2s;margin-top:.5rem;position:relative;overflow:hidden;}
+    .pay-btn:hover{transform:translateY(-1px);box-shadow:0 8px 24px rgba(16,185,129,.4);}
+    .pay-btn:active{transform:none;}
+    .pay-btn:disabled{opacity:.7;cursor:not-allowed;transform:none;}
+
+    /* Processing overlay */
+    .overlay{display:none;position:fixed;inset:0;background:rgba(6,13,26,.95);z-index:100;flex-direction:column;align-items:center;justify-content:center;gap:1.5rem;}
+    .overlay.show{display:flex;}
+    .spinner{width:56px;height:56px;border:4px solid rgba(16,185,129,.2);border-top-color:#10b981;border-radius:50%;animation:spin .8s linear infinite;}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .overlay-txt{color:#f8fafc;font-size:1.1rem;font-weight:600;}
+    .overlay-sub{color:#64748b;font-size:.85rem;margin-top:-.8rem;}
+
+    /* Success overlay */
+    .success-overlay{display:none;position:fixed;inset:0;background:rgba(6,13,26,.97);z-index:101;flex-direction:column;align-items:center;justify-content:center;gap:1rem;}
+    .success-overlay.show{display:flex;}
+    .checkmark{width:80px;height:80px;border-radius:50%;background:rgba(16,185,129,.15);border:2px solid #10b981;display:flex;align-items:center;justify-content:center;font-size:2.5rem;animation:pop .4s cubic-bezier(.175,.885,.32,1.275);}
+    @keyframes pop{0%{transform:scale(0)}100%{transform:scale(1)}}
+    .success-title{color:#f8fafc;font-size:1.4rem;font-weight:700;}
+    .success-sub{color:#64748b;font-size:.88rem;text-align:center;max-width:280px;line-height:1.6;}
+    .txn-id{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:.6rem 1.2rem;font-size:.78rem;color:#94a3b8;font-family:monospace;letter-spacing:.04em;}
+    .go-btn{margin-top:.5rem;padding:.85rem 2.5rem;background:linear-gradient(135deg,#10b981,#059669);border:none;border-radius:12px;color:#fff;font-family:'Outfit',sans-serif;font-size:.95rem;font-weight:700;cursor:pointer;transition:.2s;}
+    .go-btn:hover{transform:translateY(-1px);box-shadow:0 8px 24px rgba(16,185,129,.4);}
+
+    /* Cancel */
+    .cancel-btn{width:100%;padding:.75rem;background:transparent;border:1.5px solid rgba(255,255,255,.1);border-radius:12px;color:#64748b;font-family:'Outfit',sans-serif;font-size:.9rem;font-weight:600;cursor:pointer;margin-top:.6rem;transition:.15s;}
+    .cancel-btn:hover{border-color:rgba(239,68,68,.4);color:#fca5a5;}
+
+    .divider{display:flex;align-items:center;gap:.8rem;margin:1rem 0;color:#334155;font-size:.75rem;}
+    .divider::before,.divider::after{content:'';flex:1;height:1px;background:rgba(255,255,255,.06);}
   </style>
 </head>
 <body>
-  <div class="payment-card">
-    <h2>Complete Your Payment</h2>
-    <p>Securely pay with Razorpay to confirm your order.</p>
-    
-    <div class="amount-display" id="displayAmount">₹0.00</div>
-    
-    <button class="btn bg" id="payBtn" onclick="payNow()">Proceed to Pay</button>
-    <button class="btn bo" style="width: 100%; margin-top: 1rem;" onclick="window.location.href='user.html'">Cancel</button>
+
+<!-- Processing overlay -->
+<div class="overlay" id="processingOverlay">
+  <div class="spinner"></div>
+  <div class="overlay-txt">Processing Payment…</div>
+  <div class="overlay-sub">Please do not close this window</div>
+</div>
+
+<!-- Success overlay -->
+<div class="success-overlay" id="successOverlay">
+  <div class="checkmark">✅</div>
+  <div class="success-title">Payment Successful!</div>
+  <div class="success-sub">Your order has been confirmed. The pharmacy will process it shortly.</div>
+  <div class="txn-id" id="txnId">TXN#DEMO0000000</div>
+  <button class="go-btn" onclick="window.location.href='success.html'">View Order Status →</button>
+</div>
+
+<div class="card">
+  <div class="hdr">
+    <div class="lock-icon">🔒</div>
+    <h2>Secure Checkout</h2>
+    <p>Complete your medicine order payment</p>
+    <div class="secure-badge"><span class="dot"></span> 256-bit SSL Encrypted</div>
   </div>
 
-  <script>
-    // Format to INR
-    function rupee(n) { return '₹'+parseFloat(n||0).toFixed(2); }
+  <div class="amount-box">
+    <div class="amount-lbl">Amount to Pay</div>
+    <div class="amount-val"><span>₹</span><span id="amtDisplay">0.00</span></div>
+  </div>
 
-    // Read amount from session storage
-    const amountStr = sessionStorage.getItem('paymentAmount');
-    let amount = parseFloat(amountStr) || 0;
-    
-    if (amount <= 0) {
-      alert("Invalid payment amount. Redirecting back to dashboard.");
-      window.location.href = "user.html";
+  <!-- Payment method selector -->
+  <div class="methods">
+    <div class="method on" id="m-card" onclick="setMethod('card')">
+      <div class="method-ico">💳</div>
+      <div class="method-lbl">Card</div>
+    </div>
+    <div class="method" id="m-upi" onclick="setMethod('upi')">
+      <div class="method-ico">📱</div>
+      <div class="method-lbl">UPI</div>
+    </div>
+  </div>
+
+  <!-- Card Form -->
+  <div class="form-sec show" id="form-card">
+    <div class="fg">
+      <label>Card Number</label>
+      <input id="cardNum" placeholder="4111 1111 1111 1111" maxlength="19" oninput="fmtCard(this)"/>
+    </div>
+    <div class="fg">
+      <label>Cardholder Name</label>
+      <input id="cardName" placeholder="Your Name" />
+    </div>
+    <div class="row2">
+      <div class="fg">
+        <label>Expiry</label>
+        <input id="expiry" placeholder="MM/YY" maxlength="5" oninput="fmtExpiry(this)"/>
+      </div>
+      <div class="fg">
+        <label>CVV</label>
+        <input id="cvv" placeholder="•••" maxlength="3" type="password"/>
+      </div>
+    </div>
+  </div>
+
+  <!-- UPI Form -->
+  <div class="form-sec" id="form-upi">
+    <div class="upi-hint">📱 Enter any UPI ID for demo — no real transaction will occur</div>
+    <div class="fg">
+      <label>UPI ID</label>
+      <input id="upiId" placeholder="yourname@upi" />
+    </div>
+  </div>
+
+  <button class="pay-btn" id="payBtn" onclick="processPayment()">
+    🔒 Pay ₹<span id="payBtnAmt">0.00</span>
+  </button>
+  <button class="cancel-btn" onclick="window.location.href='user.html'">Cancel Order</button>
+
+  <div class="divider">demo mode — no real charges</div>
+</div>
+
+<script>
+  // ── State ─────────────────────────────────────────────────
+  const amountStr = sessionStorage.getItem('paymentAmount');
+  let amount = parseFloat(amountStr) || 0;
+  let method = 'card';
+
+  if (amount <= 0) {
+    alert('No payment amount found. Redirecting to dashboard.');
+    window.location.href = 'user.html';
+  }
+
+  // Display amount
+  const fmt = n => parseFloat(n||0).toFixed(2);
+  document.getElementById('amtDisplay').textContent  = fmt(amount);
+  document.getElementById('payBtnAmt').textContent   = fmt(amount);
+
+  // ── Method switch ─────────────────────────────────────────
+  function setMethod(m) {
+    method = m;
+    document.querySelectorAll('.method').forEach(el => el.classList.remove('on'));
+    document.getElementById('m-' + m).classList.add('on');
+    document.querySelectorAll('.form-sec').forEach(el => el.classList.remove('show'));
+    document.getElementById('form-' + m).classList.add('show');
+  }
+
+  // ── Input formatters ──────────────────────────────────────
+  function fmtCard(el) {
+    let v = el.value.replace(/\D/g,'').substring(0,16);
+    el.value = v.match(/.{1,4}/g)?.join(' ') || v;
+  }
+  function fmtExpiry(el) {
+    let v = el.value.replace(/\D/g,'').substring(0,4);
+    if (v.length >= 3) v = v.substring(0,2)+'/'+v.substring(2);
+    el.value = v;
+  }
+
+  // ── Payment flow ──────────────────────────────────────────
+  async function processPayment() {
+    // Basic validation
+    if (method === 'card') {
+      const num = document.getElementById('cardNum').value.replace(/\s/g,'');
+      if (num.length < 12) { shake('cardNum'); return; }
+      if (!document.getElementById('cardName').value.trim()) { shake('cardName'); return; }
+      if (!document.getElementById('expiry').value.trim()) { shake('expiry'); return; }
+      if (!document.getElementById('cvv').value.trim()) { shake('cvv'); return; }
+    } else {
+      const upi = document.getElementById('upiId').value.trim();
+      if (!upi.includes('@')) { shake('upiId'); return; }
     }
 
-    document.getElementById('displayAmount').textContent = rupee(amount);
+    document.getElementById('payBtn').disabled = true;
+    document.getElementById('processingOverlay').classList.add('show');
 
-    async function payNow() {
-      const btn = document.getElementById('payBtn');
-      btn.disabled = true;
-      btn.textContent = "Initializing...";
+    try {
+      // Step 1: Create demo order
+      const orderRes = await fetch('http://10.67.132.109:5000/create-order', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amount })
+      });
+      const order = await orderRes.json();
 
-      try {
-        const res = await fetch("/create-order", {
-          method: "POST",
-          headers: {"Content-Type": "application/json"},
-          body: JSON.stringify({ amount })
-        });
+      // Step 2: Simulate 2.5s processing delay
+      await delay(2500);
 
-        const order = await res.json();
-        
-        if (!order || !order.id) {
-            throw new Error("Failed to create order");
-        }
+      // Step 3: Verify (confirm orders in DB)
+      const verifyRes = await fetch('http://10.67.132.109:5000/api/payment/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          razorpay_order_id: order.id,
+          razorpay_payment_id: 'demo_pay_' + Date.now(),
+          razorpay_signature: 'demo_sig',
+          orderIds: sessionStorage.getItem('paymentOrderIds')
+        })
+      });
+      const result = await verifyRes.json();
 
-        const options = {
-          key: "YOUR_KEY_ID", // TODO: Replace with real key ID
-          amount: order.amount,
-          currency: "INR",
-          name: "MediFind",
-          description: "Medicine Purchase",
-          order_id: order.id,
-          handler: async function (response) {
-            btn.textContent = "Verifying...";
-            try {
-              const verifyRes = await fetch("/api/payment/verify", {
-                method: "POST",
-                headers: {"Content-Type": "application/json"},
-                body: JSON.stringify({
-                  razorpay_order_id: response.razorpay_order_id,
-                  razorpay_payment_id: response.razorpay_payment_id,
-                  razorpay_signature: response.razorpay_signature,
-                  orderIds: sessionStorage.getItem('paymentOrderIds')
-                })
-              });
-              const verifyData = await verifyRes.json();
-              
-              if (verifyData.success) {
-                sessionStorage.removeItem('paymentAmount');
-                sessionStorage.removeItem('paymentOrderIds');
-                window.location.href = "success.html";
-              } else {
-                alert("Payment Verification Failed! " + verifyData.message);
-                btn.disabled = false;
-                btn.textContent = "Try Again";
-              }
-            } catch (err) {
-              alert("Error verifying payment.");
-              btn.disabled = false;
-              btn.textContent = "Try Again";
-            }
-          },
-          theme: { color: "#10b981" }
-        };
+      // Step 4: Show result
+      document.getElementById('processingOverlay').classList.remove('show');
 
-        const rzp = new Razorpay(options);
-        rzp.on('payment.failed', function (response){
-            alert("Payment Failed! " + response.error.description);
-            btn.disabled = false;
-            btn.textContent = "Try Again";
-        });
-        
-        rzp.open();
-        btn.textContent = "Awaiting Payment...";
-        
-      } catch (e) {
-          alert("Error initializing payment. Please try again.");
-          btn.disabled = false;
-          btn.textContent = "Proceed to Pay";
+      if (result.success) {
+        const txnId = 'TXN#DEMO' + Math.floor(Math.random()*9000000+1000000);
+        document.getElementById('txnId').textContent = txnId;
+        sessionStorage.removeItem('paymentAmount');
+        sessionStorage.removeItem('paymentOrderIds');
+        document.getElementById('successOverlay').classList.add('show');
+      } else {
+        alert('Payment failed: ' + result.message);
+        document.getElementById('payBtn').disabled = false;
       }
+    } catch (e) {
+      document.getElementById('processingOverlay').classList.remove('show');
+      alert('Cannot reach server. Make sure node server.js is running.');
+      document.getElementById('payBtn').disabled = false;
     }
-  </script>
+  }
+
+  function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+  function shake(id) {
+    const el = document.getElementById(id);
+    el.style.borderColor = '#f43f5e';
+    el.style.animation = 'none';
+    el.focus();
+    setTimeout(() => el.style.borderColor = '', 1500);
+  }
+</script>
 </body>
 </html>

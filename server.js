@@ -14,9 +14,8 @@ const orderRoutes = require('./routes/order');
 const medicineRoutes = require('./routes/medicine');
 const notificationRoutes = require('./routes/notifications');
 const adminRoutes = require('./routes/admin');
-const Razorpay = require('razorpay');
-const crypto = require('crypto');
 const orderModel = require('./models/orderModel');
+
 
 const app = express();
 
@@ -32,10 +31,7 @@ setInterval(() => {
 }, 5000);
 // ══════════════════════════════════════════════════════════
 
-const razorpay = new Razorpay({
-  key_id: process.env.RAZORPAY_KEY_ID,
-  key_secret: process.env.RAZORPAY_KEY_SECRET,
-});
+
 
 // app.use(helmet());
 app.use(cors({ origin: true, credentials: true }));
@@ -64,48 +60,33 @@ app.get('/pages/admin.html', requireRole('ADMIN'), (req, res) => {
 app.use(express.static(path.join(__dirname)));
 app.get('/api/health', (req, res) => res.json({ status: 'ok' }));
 
+// ═══ DEMO PAYMENT ROUTES (no real payment gateway needed) ═══
 app.post("/create-order", async (req, res) => {
+  // Return a fake order object for demo purposes
   const { amount } = req.body;
-
-  const options = {
-    amount: amount * 100, // convert to paise
-    currency: "INR",
-    receipt: "order_rcptid_" + Date.now(),
-  };
-
-  try {
-    const order = await razorpay.orders.create(options);
-    // Return key_id so mobile client doesn't need it hardcoded
-    res.json({ ...order, key_id: process.env.RAZORPAY_KEY_ID });
-  } catch (err) {
-    res.status(500).send(err);
-  }
+  res.json({
+    id: "demo_order_" + Date.now(),
+    amount: Math.round((amount || 0) * 100),
+    currency: "INR"
+  });
 });
 
 app.post('/api/payment/verify', async (req, res) => {
-  const { razorpay_order_id, razorpay_payment_id, razorpay_signature, orderIds } = req.body;
-  
-  const sign = razorpay_order_id + "|" + razorpay_payment_id;
-  const expectedSign = crypto
-    .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
-    .update(sign.toString())
-    .digest("hex");
-
-  if (razorpay_signature === expectedSign) {
-    // Payment is authentic
-    try {
-      if (orderIds) {
-        const ids = orderIds.split(',');
-        for (const id of ids) {
-          await orderModel.updateOrderStatus(parseInt(id, 10), 'CONFIRMED');
+  // Demo: always succeed and confirm the orders in DB
+  const { orderIds } = req.body;
+  try {
+    if (orderIds) {
+      const ids = String(orderIds).split(',');
+      for (const id of ids) {
+        const parsed = parseInt(id.trim(), 10);
+        if (!isNaN(parsed)) {
+          await orderModel.updateOrderStatus(parsed, 'CONFIRMED');
         }
       }
-      res.json({ success: true, message: "Payment verified successfully" });
-    } catch (err) {
-      res.status(500).json({ success: false, message: "Database error" });
     }
-  } else {
-    res.status(400).json({ success: false, message: "Invalid signature" });
+    res.json({ success: true, message: "Demo payment verified successfully" });
+  } catch (err) {
+    res.status(500).json({ success: false, message: "Database error" });
   }
 });
 app.use((req, res) => res.status(404).send('Not found'));
