@@ -3,7 +3,8 @@ const { requireRole } = require('../middleware/auth');
 const { getStats, getUsers, getPharmacies, getMedicines, getOrders, togglePharmacy } = require('../controllers/adminController');
 
 const router = express.Router();
-router.use(requireRole('ADMIN'));
+// Only protect admin endpoints, don't block the entire /api namespace.
+router.use('/admin', requireRole('ADMIN'));
 router.get('/admin/stats', getStats);
 router.get('/admin/users', getUsers);
 router.get('/admin/pharmacies', getPharmacies);
