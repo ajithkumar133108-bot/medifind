@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+  <title>MediFind – Secure Payment</title>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Playfair+Display:wght@700&display=swap"
+    rel="stylesheet"
+  />
+  <link rel="stylesheet" href="../css/style.css" />
+  <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+  <style>
+    body {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      background: #0f172a;
+      color: #f8fafc;
+    }
+    .payment-card {
+      background: #1e293b;
+      padding: 3rem;
+      border-radius: 16px;
+      text-align: center;
+      max-width: 400px;
+      width: 100%;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+    }
+    .payment-card h2 {
+      margin-bottom: 1rem;
+      color: #10b981;
+    }
+    .payment-card p {
+      color: #cbd5e1;
+      margin-bottom: 2rem;
+    }
+    .amount-display {
+      font-size: 2.5rem;
+      font-weight: 800;
+      color: #f8fafc;
+      margin-bottom: 2rem;
+    }
+    .btn.bg {
+      width: 100%;
+      padding: 1rem;
+      font-size: 1.1rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="payment-card">
+    <h2>Complete Your Payment</h2>
+    <p>Securely pay with Razorpay to confirm your order.</p>
+    
+    <div class="amount-display" id="displayAmount">₹0.00</div>
+    
+    <button class="btn bg" id="payBtn" onclick="payNow()">Proceed to Pay</button>
+    <button class="btn bo" style="width: 100%; margin-top: 1rem;" onclick="window.location.href='user.html'">Cancel</button>
+  </div>
+
+  <script>
+    // Format to INR
+    function rupee(n) { return '₹'+parseFloat(n||0).toFixed(2); }
+
+    // Read amount from session storage
+    const amountStr = sessionStorage.getItem('paymentAmount');
+    let amount = parseFloat(amountStr) || 0;
+    
+    if (amount <= 0) {
+      alert("Invalid payment amount. Redirecting back to dashboard.");
+      window.location.href = "user.html";
+    }
+
+    document.getElementById('displayAmount').textContent = rupee(amount);
+
+    async function payNow() {
+      const btn = document.getElementById('payBtn');
+      btn.disabled = true;
+      btn.textContent = "Initializing...";
+
+      try {
+        const res = await fetch("/create-order", {
+          method: "POST",
+          headers: {"Content-Type": "application/json"},
+          body: JSON.stringify({ amount })
+        });
+
+        const order = await res.json();
+        
+        if (!order || !order.id) {
+            throw new Error("Failed to create order");
+        }
+
+        const options = {
+          key: "YOUR_KEY_ID", // TODO: Replace with real key ID
+          amount: order.amount,
+          currency: "INR",
+          name: "MediFind",
+          description: "Medicine Purchase",
+          order_id: order.id,
+          handler: async function (response) {
+            btn.textContent = "Verifying...";
+            try {
+              const verifyRes = await fetch("/api/payment/verify", {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({
+                  razorpay_order_id: response.razorpay_order_id,
+                  razorpay_payment_id: response.razorpay_payment_id,
+                  razorpay_signature: response.razorpay_signature,
+                  orderIds: sessionStorage.getItem('paymentOrderIds')
+                })
+              });
+              const verifyData = await verifyRes.json();
+              
+              if (verifyData.success) {
+                sessionStorage.removeItem('paymentAmount');
+                sessionStorage.removeItem('paymentOrderIds');
+                window.location.href = "success.html";
+              } else {
+                alert("Payment Verification Failed! " + verifyData.message);
+                btn.disabled = false;
+                btn.textContent = "Try Again";
+              }
+            } catch (err) {
+              alert("Error verifying payment.");
+              btn.disabled = false;
+              btn.textContent = "Try Again";
+            }
+          },
+          theme: { color: "#10b981" }
+        };
+
+        const rzp = new Razorpay(options);
+        rzp.on('payment.failed', function (response){
+            alert("Payment Failed! " + response.error.description);
+            btn.disabled = false;
+            btn.textContent = "Try Again";
+        });
+        
+        rzp.open();
+        btn.textContent = "Awaiting Payment...";
+        
+      } catch (e) {
+          alert("Error initializing payment. Please try again.");
+          btn.disabled = false;
+          btn.textContent = "Proceed to Pay";
+      }
+    }
+  </script>
+</body>
+</html>

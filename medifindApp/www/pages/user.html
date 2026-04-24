@@ -1,0 +1,1647 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+    <title>MediFind – Patient Dashboard</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Playfair+Display:wght@700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="../css/style.css" />
+    <!-- Google Maps API (Replace YOUR_GOOGLE_MAPS_API_KEY with actual key) -->
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAQj1ADl5hsR6eLlEWh2rYDIJcCkTI-x4k"></script>
+    <style>
+      /* Cordova Mobile Specific UI Improvements */
+      body { font-family: Arial, sans-serif; margin: 0; }
+      button { padding: 15px; font-size: 16px; border-radius: 10px; }
+      .card { margin: 10px; padding: 15px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.2); }
+    </style>
+  </head>
+  <body>
+    <!-- Dim overlay for side panels -->
+    <div class="dim" id="dim" onclick="closePanels()"></div>
+
+    <div class="wrap">
+      <!-- ══ SIDEBAR ══ -->
+      <aside class="sidebar">
+        <div class="sb-logo">
+          <h2>💊 <em>Medi</em>Find</h2>
+          <p>Patient Portal</p>
+        </div>
+        <div class="sb-user">
+          <div class="sb-name" id="sbName">…</div>
+          <div class="sb-role" id="sbRole">USER</div>
+        </div>
+        <nav class="sb-nav">
+          <div class="nav-lbl">Menu</div>
+          <button
+            class="nb active"
+            data-sec="search"
+            onclick="showSec('search')"
+          >
+            <span class="ni">🔍</span>Search Medicine
+          </button>
+          <button class="nb" data-sec="orders" onclick="showSec('orders')">
+            <span class="ni">📦</span>My Orders
+          </button>
+          <button class="nb" data-sec="favorites" onclick="showSec('favorites')">
+            <span class="ni">❤️</span>Favorites
+          </button>
+          <button class="nb" data-sec="map" onclick="showSec('map')">
+            <span class="ni">🗺️</span>Pharmacy Map
+          </button>
+          <button class="nb" data-sec="ai" onclick="showSec('ai')">
+            <span class="ni">🤖</span>AI Assistant
+          </button>
+          <div class="nav-lbl" style="margin-top: 0.5rem">Actions</div>
+          <button class="nb" onclick="openCart()">
+            <span class="ni">🛒</span>My Cart
+            <span class="cart-count hidden" id="cartBadge">0</span>
+          </button>
+          <button class="nb" onclick="openNotif()">
+            <span class="ni">🔔</span>Notifications
+            <span class="notif-count hidden" id="notifBadge">0</span>
+          </button>
+        </nav>
+        <div class="sb-bot">
+          <button class="btn-lo" onclick="logout()">🚪 Sign Out</button>
+        </div>
+      </aside>
+
+      <!-- ══ MAIN ══ -->
+      <main class="main">
+        <div class="alert" id="alert"></div>
+
+        <!-- SEARCH -->
+        <div id="s-search" data-sec>
+          <div class="ph">
+            <div>
+              <div class="pt">Search Medicine</div>
+              <div class="ps">Find medicines at nearby pharmacies</div>
+            </div>
+          </div>
+          <div class="sbar">
+            <input
+              id="si"
+              class="inp"
+              placeholder="Type medicine name… e.g. Paracetamol, Cetirizine"
+              style="flex: 2; min-width: 200px"
+            />
+            <select id="rad" class="inp" style="max-width: 155px">
+              <option value="1">📍 1 km</option>
+              <option value="3">📍 3 km</option>
+              <option value="5" selected>📍 5 km</option>
+              <option value="10">📍 10 km</option>
+              <option value="25">📍 25 km</option>
+              <option value="50">🌐 All (50 km)</option>
+            </select>
+            <button class="btn bo" onclick="getLoc()">📍 My Location</button>
+            <button class="btn bg" onclick="doSearch()">🔍 Search</button>
+          </div>
+          <div class="filters" style="display: flex; gap: 1rem; margin-bottom: 1rem; flex-wrap: wrap;">
+            <select id="category" class="inp" style="max-width: 150px;">
+              <option value="">All Categories</option>
+              <option value="Pain Relief">Pain Relief</option>
+              <option value="Antibiotics">Antibiotics</option>
+              <option value="Allergy">Allergy</option>
+              <option value="Cold & Flu">Cold & Flu</option>
+              <option value="Digestive">Digestive</option>
+              <option value="Vitamins">Vitamins</option>
+              <option value="Other">Other</option>
+            </select>
+            <input id="minPrice" class="inp" placeholder="Min Price" type="number" min="0" step="0.01" style="max-width: 100px;" />
+            <input id="maxPrice" class="inp" placeholder="Max Price" type="number" min="0" step="0.01" style="max-width: 100px;" />
+            <button class="btn bo" onclick="clearFilters()">Clear Filters</button>
+          </div>
+          <div id="locTxt" class="td mb1"></div>
+          <div id="results"></div>
+        </div>
+
+        <!-- ORDERS -->
+        <div id="s-orders" data-sec class="sh">
+          <div class="ph">
+            <div>
+              <div class="pt">My Orders</div>
+              <div class="ps">Track all your medicine orders</div>
+            </div>
+            <button class="btn bo bsm" onclick="loadOrders()">↻ Refresh</button>
+          </div>
+          <div class="card">
+            <div class="tw">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Order#</th>
+                    <th>Medicine</th>
+                    <th>Pharmacy</th>
+                    <th>Qty</th>
+                    <th>Total</th>
+                    <th>Type</th>
+                    <th>Status</th>
+                    <th>Date</th>
+                  </tr>
+                </thead>
+                <tbody id="ordTb"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- FAVORITES -->
+        <div id="s-favorites" data-sec class="sh">
+          <div class="ph">
+            <div>
+              <div class="pt">My Favorites</div>
+              <div class="ps">Quick access to your favorite medicines</div>
+            </div>
+          </div>
+          <div id="favoritesList"></div>
+        </div>
+
+        <!-- AI ASSISTANT -->
+        <div id="s-ai" data-sec class="sh">
+          <div class="ph">
+            <div>
+              <div class="pt">AI Symptom Assistant</div>
+              <div class="ps">Describe your symptoms to get medicine recommendations</div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="field">
+              <label>Describe your symptoms</label>
+              <textarea id="symptomsInp" class="inp" placeholder="e.g. I have fever, headache, and sore throat" rows="4"></textarea>
+            </div>
+            <button class="btn bg" onclick="getAISuggestions()">🤖 Get Recommendations</button>
+            <div id="aiResults" class="mt2"></div>
+          </div>
+        </div>
+
+        <!-- MAP -->
+        <div id="s-map" data-sec class="sh">
+          <div class="ph">
+            <div>
+              <div class="pt">Pharmacy Map</div>
+              <div class="ps">All registered pharmacies</div>
+            </div>
+          </div>
+          <div class="card" style="padding: 0; overflow: hidden; position: relative;">
+            <div id="map" style="height: 470px; border-radius: 14px"></div>
+            <div id="sidebar" style="position:absolute; top:10px; left:10px; width:260px; max-height:450px; overflow-y:auto; background:white; padding:10px; border-radius:10px; box-shadow:0 2px 10px rgba(0,0,0,0.2); z-index: 10;">
+              <h3 style="color: #0f172a; margin-bottom: 0.5rem; font-size: 1.1rem;">Nearby Pharmacies</h3>
+              <input type="text" id="mapSearch" placeholder="Search nearby..." style="width:100%; padding: 6px; margin-bottom: 8px; border: 1px solid #ccc; border-radius: 4px; font-family: inherit;" oninput="filterMapPharmacies()">
+              <div id="pharmacyList" style="color: #334155; font-size: 0.9rem;"></div>
+            </div>
+            <div id="routeInfo" style="display:none; position:absolute; bottom:10px; left:10px; width:260px; background:white; padding:10px; border-radius:8px; box-shadow:0 2px 10px rgba(0,0,0,0.2); z-index: 10; color: #0f172a; font-size: 0.9rem;">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 5px;">
+                <b>Route Details</b>
+                <button onclick="clearRoute()" style="background:none; border:none; cursor:pointer; color:#f43f5e; font-size:1.1rem;">×</button>
+              </div>
+              <div id="routeStats"></div>
+            </div>
+            <div id="trackingBox" style="position:absolute; top:10px; right:10px; background:white; padding:10px; border-radius:10px; box-shadow:0 2px 10px rgba(0,0,0,0.2); z-index:10; color:#0f172a; font-size:0.9rem;">
+              🚚 <b>Delivery Status</b><br/>
+              <span id="statusText" style="color:#64748b; font-size:0.85em;">Awaiting order...</span>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <!-- ══ CART PANEL ══ -->
+    <div class="cart-panel" id="cartPanel">
+      <div class="cp-head">
+        <h3>🛒 My Cart</h3>
+        <button class="cp-close" onclick="closeCart()">✕</button>
+      </div>
+      <div class="cp-items" id="cartItems">
+        <div class="cp-empty">
+          <div class="ei">🛒</div>
+          <p>
+            Your cart is empty.<br />Search medicines and click "Add to Cart".
+          </p>
+        </div>
+      </div>
+      <div class="cp-foot">
+        <div class="cp-total">
+          <span>Total Amount</span><strong id="cartTotal">₹0.00</strong>
+        </div>
+        <div
+          class="fg"
+          id="homeAddrWrap"
+          style="display: none; margin-bottom: 0.7rem"
+        >
+          <label class="lbl">Delivery Address (for Home Delivery items)</label>
+          <textarea
+            id="globalAddr"
+            class="inp"
+            rows="2"
+            placeholder="Enter delivery address…"
+          ></textarea>
+        </div>
+        <button class="btn bg bbl" id="checkoutBtn" onclick="checkout()">
+          ✅ Place All Orders
+        </button>
+      </div>
+    </div>
+
+    <!-- ══ NOTIFICATIONS PANEL ══ -->
+    <div class="notif-panel" id="notifPanel">
+      <div class="np-head">
+        <h3>🔔 Notifications</h3>
+        <div class="flex gap1 ac">
+          <button class="btn bo bsm" onclick="markAllRead()">
+            Mark All Read
+          </button>
+          <button class="cp-close" onclick="closeNotif()">✕</button>
+        </div>
+      </div>
+      <div class="np-items" id="notifItems">
+        <div class="cp-empty">
+          <div class="ei">🔔</div>
+          <p>No notifications yet.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ LOCATION MODAL ══ -->
+    <div class="mbg" id="locMod">
+      <div class="modal" style="max-width: 500px">
+        <h3>📍 Set Your Location</h3>
+        <p style="color: #94a3b8; font-size: 0.9rem; margin-bottom: 1.2rem">
+          Choose how to set your location for accurate pharmacy distance
+          calculations
+        </p>
+
+        <!-- Current Location Status -->
+        <div
+          id="locStatus"
+          style="
+            background: rgba(16, 185, 129, 0.07);
+            border: 1px solid rgba(16, 185, 129, 0.18);
+            border-radius: 10px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            font-size: 0.9rem;
+            color: #cbd5e1;
+          "
+        >
+          <div id="locStatusTxt">No location set yet</div>
+          <div
+            id="locCoords"
+            style="font-size: 0.85rem; color: #64748b; margin-top: 0.4rem"
+          ></div>
+        </div>
+
+        <!-- Tabs for location input methods -->
+        <div
+          style="
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr 1fr;
+            gap: 0.5rem;
+            margin-bottom: 1.2rem;
+          "
+        >
+          <button
+            class="btn locTab on"
+            data-tab="manual"
+            onclick="switchLocTab('manual')"
+          >
+            ✏️ Manual
+          </button>
+          <button
+            class="btn locTab"
+            data-tab="presets"
+            onclick="switchLocTab('presets')"
+          >
+            📌 Presets
+          </button>
+          <button
+            class="btn locTab"
+            data-tab="map"
+            onclick="switchLocTab('map')"
+          >
+            🗺️ Map
+          </button>
+          <button
+            class="btn locTab"
+            data-tab="gps"
+            onclick="switchLocTab('gps')"
+          >
+            📡 GPS
+          </button>
+        </div>
+
+        <!-- Manual Input -->
+        <div id="locTab-manual" class="locTabContent" style="display: block">
+          <div class="fg">
+            <label class="lbl">Latitude (e.g., 13.0827)</label
+            ><input
+              type="number"
+              id="manLat"
+              class="inp"
+              step="0.0001"
+              placeholder="13.0827"
+            />
+          </div>
+          <div class="fg">
+            <label class="lbl">Longitude (e.g., 80.2707)</label
+            ><input
+              type="number"
+              id="manLng"
+              class="inp"
+              step="0.0001"
+              placeholder="80.2707"
+            />
+          </div>
+          <button
+            class="btn bg"
+            style="width: 100%"
+            onclick="setLocationManual()"
+          >
+            ✓ Set Coordinates
+          </button>
+        </div>
+
+        <!-- Preset Locations -->
+        <div id="locTab-presets" class="locTabContent" style="display: none">
+          <p style="color: #94a3b8; font-size: 0.85rem; margin-bottom: 0.8rem">
+            Quick select from pharmacy locations
+          </p>
+          <div style="display: grid; gap: 0.5rem">
+            <button
+              class="btn bo locPreset"
+              onclick="setLocationPreset(13.0827, 80.2707, 'MedPlus Pharmacy')"
+            >
+              🏪 MedPlus Pharmacy (13.0827, 80.2707)
+            </button>
+            <button
+              class="btn bo locPreset"
+              onclick="setLocationPreset(13.0418, 80.2341, 'Apollo Pharmacy')"
+            >
+              🏪 Apollo Pharmacy (13.0418, 80.2341)
+            </button>
+            <button
+              class="btn bo locPreset"
+              onclick="setLocationPreset(13.0067, 80.2554, 'LifeCare Medical')"
+            >
+              🏥 LifeCare Medical (13.0067, 80.2554)
+            </button>
+            <button
+              class="btn bo locPreset"
+              onclick="
+                setLocationPreset(12.9783, 80.2209, 'HealthPoint Pharma')
+              "
+            >
+              💊 HealthPoint Pharma (12.9783, 80.2209)
+            </button>
+            <button
+              class="btn bo locPreset"
+              onclick="setLocationPreset(12.9249, 80.1, 'CureMart Pharmacy')"
+            >
+              🏪 CureMart Pharmacy (12.9249, 80.1000)
+            </button>
+            <button
+              class="btn bo locPreset"
+              onclick="setLocationPreset(13.05, 80.25, 'Center Point (Test)')"
+            >
+              📍 Center Point - Test Location (13.0500, 80.2500)
+            </button>
+          </div>
+        </div>
+
+        <!-- Map-Based Selection -->
+        <div id="locTab-map" class="locTabContent" style="display: none">
+          <p style="color: #94a3b8; font-size: 0.85rem; margin-bottom: 0.8rem">
+            Click on the map to set your location or click on a pharmacy
+          </p>
+          <div
+            id="locMapContainer"
+            style="
+              height: 300px;
+              border-radius: 8px;
+              border: 1px solid rgba(16, 185, 129, 0.18);
+              overflow: hidden;
+              margin-bottom: 1rem;
+            "
+          ></div>
+          <p
+            id="mapClickHint"
+            style="
+              color: #64748b;
+              font-size: 0.8rem;
+              background: rgba(15, 23, 42, 0.5);
+              padding: 0.6rem;
+              border-radius: 6px;
+              text-align: center;
+            "
+          >
+            💡 Tip: Click on the map to set your location
+          </p>
+        </div>
+
+        <!-- GPS Detection -->
+        <div id="locTab-gps" class="locTabContent" style="display: none">
+          <p style="color: #94a3b8; font-size: 0.85rem; margin-bottom: 1rem">
+            Get your exact location from device GPS
+          </p>
+          <div
+            id="gpsStatus"
+            style="
+              background: rgba(255, 255, 255, 0.05);
+              border: 1px solid rgba(255, 255, 255, 0.1);
+              border-radius: 8px;
+              padding: 0.8rem;
+              margin-bottom: 1rem;
+              text-align: center;
+              color: #cbd5e1;
+              font-size: 0.9rem;
+            "
+          >
+            Click button to enable GPS
+          </div>
+          <button class="btn bg" style="width: 100%" onclick="getGPSLocation()">
+            📡 Enable GPS & Detect
+          </button>
+          <p style="color: #64748b; font-size: 0.8rem; margin-top: 0.8rem">
+            ⚠️ Note: Allow location permission in browser. Works best outdoors
+            with GPS enabled.
+          </p>
+        </div>
+
+        <!-- Action Buttons -->
+        <div
+          style="
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.5rem;
+            margin-top: 1.5rem;
+          "
+        >
+          <button class="btn bo" onclick="closeM('locMod')">Cancel</button>
+          <button class="btn bg" onclick="confirmLocation()">
+            ✓ Continue Search
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ BOOK MODAL (for direct booking) ══ -->
+    <div class="mbg" id="bookMod">
+      <div class="modal">
+        <h3>🛒 Book Medicine</h3>
+        <div
+          id="bookInfo"
+          style="
+            background: rgba(16, 185, 129, 0.07);
+            border: 1px solid rgba(16, 185, 129, 0.18);
+            border-radius: 10px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            font-size: 0.86rem;
+            color: #cbd5e1;
+            line-height: 1.75;
+          "
+        ></div>
+        <div class="fg">
+          <label class="lbl">Quantity</label
+          ><input type="number" id="bQty" class="inp" value="1" min="1" />
+        </div>
+        <div class="fg">
+          <label class="lbl">Delivery Type</label>
+          <select id="bType" class="inp" onchange="toggleBAddr()">
+            <option value="PICKUP">🏪 Pharmacy Pickup</option>
+            <option value="HOME_DELIVERY">🚚 Home Delivery</option>
+          </select>
+        </div>
+        <div class="fg" id="bAddrGrp" style="display: none">
+          <label class="lbl">Delivery Address *</label>
+          <textarea
+            id="bAddr"
+            class="inp"
+            rows="2"
+            placeholder="Enter full delivery address…"
+          ></textarea>
+        </div>
+        <div
+          id="bTotal"
+          style="
+            font-size: 1.1rem;
+            font-weight: 800;
+            color: #10b981;
+            margin-bottom: 0.5rem;
+          "
+        ></div>
+        <div class="mf">
+          <button class="btn bo" onclick="closeM('bookMod')">Cancel</button>
+          <button class="btn bo" onclick="addToCartFromModal()">
+            🛒 Add to Cart
+          </button>
+          <button class="btn bg" id="bookBtn" onclick="directBook()">
+            ⚡ Order Now
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <script src="../js/app.js"></script>
+    <script>
+      // ═══ STATE ═══════════════════════════════════════════════
+      const MAP_API_KEY = ""; // Add your map provider API key here if needed
+      const MAP_TILE_URL = MAP_API_KEY
+        ? `https://api.maptiler.com/tiles/basic/{z}/{x}/{y}.png?key=${MAP_API_KEY}`
+        : "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
+      const MAP_TILE_ATTRIBUTION = MAP_API_KEY
+        ? '© OpenStreetMap contributors © MapTiler'
+        : '© OpenStreetMap';
+
+      let uLat = 0,
+        uLng = 0,
+        selMed = null,
+        leafMap = null;
+      let favorites = []; // [medicine objects]
+      let cart = []; // [cart items]
+
+      // ═══ INIT ════════════════════════════════════════════════
+      window.onload = async function () {
+        const user = await checkAuth("USER");
+        if (!user) return;
+        loadSavedLocation();
+        updateLocStatus();
+        loadCart();
+        loadFavorites();
+        pollNotifications();
+        setInterval(pollNotifications, 30000); // check every 30s
+      };
+
+      function afterShow(id) {
+        if (id === "orders") loadOrders();
+        if (id === "map") initMap();
+        if (id === "favorites") displayFavorites();
+      }
+
+      // ═══ LOCATION ════════════════════════════════════════════
+      let locMapPicker = null;
+
+      function getLoc() {
+        updateLocStatus();
+        openM("locMod");
+        if (navigator.geolocation) {
+          getGPSLocation();
+        }
+      }
+
+      function updateLocStatus() {
+        const statusEl = document.getElementById("locStatus");
+        const statusTxt = document.getElementById("locStatusTxt");
+        const coords = document.getElementById("locCoords");
+
+        if (uLat && uLng) {
+          statusTxt.textContent = "✅ Location Set";
+          statusTxt.style.color = "#6ee7b7";
+          coords.innerHTML = `Lat: <strong>${uLat.toFixed(6)}</strong>, Lng: <strong>${uLng.toFixed(6)}</strong>`;
+        } else {
+          statusTxt.textContent = "❌ No location set";
+          statusTxt.style.color = "#fca5a5";
+          coords.textContent = "Set location to calculate pharmacy distances";
+        }
+      }
+
+      function switchLocTab(tab) {
+        document
+          .querySelectorAll(".locTabContent")
+          .forEach((el) => (el.style.display = "none"));
+        document
+          .querySelectorAll(".locTab")
+          .forEach((el) => el.classList.remove("on"));
+        document.getElementById("locTab-" + tab).style.display = "block";
+        document.querySelector('[data-tab="' + tab + '"]').classList.add("on");
+
+        // Initialize map when switching to map tab
+        if (tab === "map" && !window.locMapInstance) {
+          setTimeout(initLocMap, 100);
+        }
+      }
+
+      function setLocationManual() {
+        const lat = parseFloat(document.getElementById("manLat").value);
+        const lng = parseFloat(document.getElementById("manLng").value);
+
+        if (isNaN(lat) || isNaN(lng)) {
+          alert_("Please enter valid latitude and longitude values.", "err");
+          return;
+        }
+
+        if (lat < -90 || lat > 90) {
+          alert_("Latitude must be between -90 and 90.", "err");
+          return;
+        }
+
+        if (lng < -180 || lng > 180) {
+          alert_("Longitude must be between -180 and 180.", "err");
+          return;
+        }
+
+        uLat = lat;
+        uLng = lng;
+        localStorage.setItem(
+          "mf_user_location",
+          JSON.stringify({ lat: uLat, lng: uLng }),
+        );
+        updateLocStatus();
+        alert_(
+          `✅ Location set to ${uLat.toFixed(4)}, ${uLng.toFixed(4)}`,
+          "ok",
+          2,
+        );
+      }
+
+      function setLocationPreset(lat, lng, name) {
+        uLat = lat;
+        uLng = lng;
+        localStorage.setItem(
+          "mf_user_location",
+          JSON.stringify({ lat: uLat, lng: uLng }),
+        );
+        updateLocStatus();
+        alert_(`✅ Using ${name} location`, "ok", 2);
+      }
+
+      function getGPSLocation() {
+        const gpsStatus = document.getElementById("gpsStatus");
+        gpsStatus.textContent = "📡 Requesting GPS access...";
+
+        if (!navigator.geolocation) {
+          gpsStatus.textContent =
+            "❌ Geolocation not supported in your browser";
+          return;
+        }
+
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            uLat = pos.coords.latitude;
+            uLng = pos.coords.longitude;
+            localStorage.setItem(
+              "mf_user_location",
+              JSON.stringify({ lat: uLat, lng: uLng }),
+            );
+            updateLocStatus();
+            gpsStatus.innerHTML = `✅ Location detected!<br/>Lat: ${uLat.toFixed(6)}, Lng: ${uLng.toFixed(6)}<br/>Accuracy: ±${Math.round(pos.coords.accuracy)}m`;
+            alert_(
+              `✅ GPS location: ${uLat.toFixed(4)}, ${uLng.toFixed(4)}`,
+              "ok",
+              3,
+            );
+          },
+          (err) => {
+            let errMsg = "GPS access denied or unavailable";
+            if (err.code === 1)
+              errMsg =
+                "❌ Permission denied. Enable location in browser settings.";
+            else if (err.code === 2)
+              errMsg = "⚠️ Position unavailable. Try outdoors with clear sky.";
+            else if (err.code === 3) errMsg = "⏱️ Request timeout. Try again.";
+            gpsStatus.textContent = errMsg;
+            alert_(errMsg, "warn", 3);
+          },
+          { timeout: 10000, enableHighAccuracy: true },
+        );
+      }
+
+      function initLocMap() {
+        if (window.locMapInstance) return;
+
+        const container = document.getElementById("locMapContainer");
+        const mapStyles = [
+          { elementType: "geometry", stylers: [{ color: "#f5f5f5" }] },
+          { elementType: "labels.text.fill", stylers: [{ color: "#616161" }] },
+          { elementType: "labels.text.stroke", stylers: [{ color: "#ffffff" }] },
+          { featureType: "road", elementType: "geometry", stylers: [{ color: "#ffffff" }] },
+          { featureType: "water", elementType: "geometry", stylers: [{ color: "#c9e6ff" }] }
+        ];
+
+        window.locMapInstance = new google.maps.Map(container, {
+          center: { lat: 13.0827, lng: 80.2707 },
+          zoom: 12,
+          styles: mapStyles,
+          disableDefaultUI: true,
+          zoomControl: true
+        });
+
+        // Pharmacy locations
+        const pharmacies = [
+          { lat: 13.0827, lng: 80.2707, name: "MedPlus Pharmacy", icon: "🏪" },
+          { lat: 13.0418, lng: 80.2341, name: "Apollo Pharmacy", icon: "🏪" },
+          { lat: 13.0067, lng: 80.2554, name: "LifeCare Medical", icon: "🏥" },
+          { lat: 12.9783, lng: 80.2209, name: "HealthPoint Pharma", icon: "💊" },
+          { lat: 12.9249, lng: 80.1, name: "CureMart Pharmacy", icon: "🏪" },
+          { lat: 13.05, lng: 80.25, name: "Center Point (Test)", icon: "📍" },
+        ];
+
+        // Add pharmacy markers
+        pharmacies.forEach((pharmacy) => {
+          const marker = new google.maps.Marker({
+            position: { lat: pharmacy.lat, lng: pharmacy.lng },
+            map: window.locMapInstance,
+            title: pharmacy.name,
+            icon: "https://maps.google.com/mapfiles/ms/icons/red-dot.png"
+          });
+
+          const info = new google.maps.InfoWindow({
+            content: `<div style="color: #0f172a; padding: 4px;"><strong>${pharmacy.name}</strong><br/>Lat: ${pharmacy.lat.toFixed(4)}<br/>Lng: ${pharmacy.lng.toFixed(4)}<br/><button class="btn bg" style="width: 100%; margin-top: 8px" onclick="setLocationFromMap(${pharmacy.lat}, ${pharmacy.lng}, '${pharmacy.name}')">Select</button></div>`
+          });
+
+          marker.addListener("click", () => info.open(window.locMapInstance, marker));
+        });
+
+        // Handle map clicks
+        window.locMapInstance.addListener("click", (e) => {
+          setLocationFromMap(e.latLng.lat(), e.latLng.lng(), "Custom Location");
+        });
+
+        // If location already set, show marker
+        if (uLat && uLng) {
+          window.locUserMarker = new google.maps.Marker({
+            position: { lat: uLat, lng: uLng },
+            map: window.locMapInstance,
+            title: "Your Location",
+            icon: {
+              path: google.maps.SymbolPath.CIRCLE,
+              scale: 8,
+              fillColor: "#4285F4",
+              fillOpacity: 1,
+              strokeWeight: 2,
+              strokeColor: "#fff"
+            }
+          });
+          window.locMapInstance.setCenter({ lat: uLat, lng: uLng });
+        }
+      }
+
+      function setLocationFromMap(lat, lng, name) {
+        uLat = lat;
+        uLng = lng;
+        localStorage.setItem(
+          "mf_user_location",
+          JSON.stringify({ lat: uLat, lng: uLng }),
+        );
+        updateLocStatus();
+        alert_(`✅ Location set from map: ${name}`, "ok", 2);
+
+        // Update map marker
+        if (window.locMapInstance) {
+          window.locMapInstance.setCenter({ lat, lng });
+          
+          if (window.locUserMarker) {
+            window.locUserMarker.setMap(null);
+          }
+          
+          window.locUserMarker = new google.maps.Marker({
+            position: { lat, lng },
+            map: window.locMapInstance,
+            title: "Your Location",
+            icon: {
+              path: google.maps.SymbolPath.CIRCLE,
+              scale: 8,
+              fillColor: "#4285F4",
+              fillOpacity: 1,
+              strokeWeight: 2,
+              strokeColor: "#fff"
+            }
+          });
+        }
+      }
+
+      function confirmLocation() {
+        if (!uLat || !uLng) {
+          alert_("Please set your location first.", "warn");
+          return;
+        }
+        closeM("locMod");
+        doSearch();
+      }
+
+      function loadSavedLocation() {
+        try {
+          const saved = localStorage.getItem("mf_user_location");
+          if (saved) {
+            const loc = JSON.parse(saved);
+            uLat = loc.lat;
+            uLng = loc.lng;
+          }
+        } catch {}
+      }
+
+      // ═══ SEARCH ══════════════════════════════════════════════
+      async function doSearch() {
+        const name = document.getElementById("si").value.trim();
+        if (!name) {
+          alert_("Please enter a medicine name.", "warn");
+          return;
+        }
+        const rad = document.getElementById("rad").value;
+
+        if (!uLat || !uLng) {
+          alert_(
+            "Please set your location first before searching within a radius.",
+            "warn",
+          );
+          return;
+        }
+
+        const category = document.getElementById("category").value;
+        const minPrice = document.getElementById("minPrice").value;
+        const maxPrice = document.getElementById("maxPrice").value;
+        const res = document.getElementById("results");
+        res.innerHTML = '<div class="sc"><div class="spin"></div></div>';
+
+        let url = `/api/search?medicine=${encodeURIComponent(name)}&radius=${rad}`;
+        url += `&lat=${uLat}&lng=${uLng}`;
+        if (category) url += `&category=${encodeURIComponent(category)}`;
+        if (minPrice) url += `&minPrice=${minPrice}`;
+        if (maxPrice) url += `&maxPrice=${maxPrice}`;
+
+        let data;
+        try {
+          data = await api(url);
+        } catch {
+          res.innerHTML =
+            '<div class="alert aerr show">Cannot reach server. Run: node server.js</div>';
+          return;
+        }
+
+        if (data.error) {
+          res.innerHTML = `<div class="alert aerr show">${data.error}</div>`;
+          return;
+        }
+        if (!data.results || !data.results.length) {
+          res.innerHTML = `<div class="alert awn show">No results for "<strong>${name}</strong>" within ${rad} km. Try a bigger radius or adjust filters.</div>`;
+          return;
+        }
+
+        res.innerHTML = `<p class="td mb1">Found <strong style="color:#f8fafc">${data.count}</strong> result(s) for "<strong style="color:#10b981">${name}</strong>"</p>`;
+        const grid = document.createElement("div");
+        grid.className = "mg";
+
+        data.results.forEach((m) => {
+          const sc =
+            m.stock_quantity > 20
+              ? "#6ee7b7"
+              : m.stock_quantity > 5
+                ? "#fde68a"
+                : "#fca5a5";
+          const dist =
+            m.distanceKm > 0
+              ? `<div class="mdist">📍 ${m.distanceKm} km away</div>`
+              : "";
+          const rx = m.requires_prescription
+            ? '<span class="badge brx">Rx</span>'
+            : '<span class="badge botc">OTC</span>';
+          const del = m.delivery_available
+            ? '<span class="badge" style="background:rgba(6,182,212,.1);color:#67e8f9;">🚚 Delivery</span>'
+            : "";
+          const c = document.createElement("div");
+          c.className = "mc";
+          c.innerHTML = `
+      <div class="mn">${m.medicine_name}</div>
+      <div class="mb2">${m.brand || "—"} · ${m.category || ""}</div>
+      <div class="mp">${rupee(m.price)} <small>/ ${m.unit}</small></div>
+      <div class="mi" style="color:${sc}">📦 Stock: ${m.stock_quantity} ${m.unit}s</div>
+      <div class="mtags mt1">${rx} ${del}</div>
+      <div class="mpharm mt1">🏪 ${m.pharmacy_name}</div>
+      <div class="madr">📌 ${m.pharmacy_address}</div>
+      ${dist}
+      <div class="mc-actions">
+        <button class="btn bo" onclick='toggleFavorite(${JSON.stringify(m).replace(/"/g, "&quot;").replace(/'/g, "&#39;")})' id="fav-${m.id}">${favorites.some(f => f.id === m.id) ? "💔 Remove" : "❤️ Favorite"}</button>
+        <button class="btn bo" onclick='openBook(${JSON.stringify(m).replace(/"/g, "&quot;").replace(/'/g, "&#39;")})'>🛒 Add to Cart</button>
+        <button class="btn bg" onclick='quickAdd(${JSON.stringify(m).replace(/"/g, "&quot;").replace(/'/g, "&#39;")})'>⚡ Buy Now</button>
+      </div>`;
+          grid.appendChild(c);
+        });
+        res.appendChild(grid);
+      }
+
+      function clearFilters() {
+        document.getElementById("category").value = "";
+        document.getElementById("minPrice").value = "";
+        document.getElementById("maxPrice").value = "";
+        doSearch();
+      }
+      document.addEventListener("keydown", (e) => {
+        if (
+          e.key === "Enter" &&
+          document.getElementById("si") === document.activeElement
+        )
+          doSearch();
+      });
+
+      // ═══ BOOK MODAL ══════════════════════════════════════════
+      function openBook(m) {
+        selMed = m;
+        document.getElementById("bookInfo").innerHTML =
+          `<strong style="font-size:1rem;color:#f8fafc">${m.medicine_name}</strong> (${m.brand || "—"})<br/>
+    💊 ${m.unit} | 💰 ${rupee(m.price)} each<br/>
+    🏪 <span style="color:#06b6d4">${m.pharmacy_name}</span><br/>
+    📦 Available: <span style="color:#6ee7b7;font-weight:700">${m.stock_quantity} ${m.unit}s</span>`;
+        document.getElementById("bQty").value = 1;
+        document.getElementById("bQty").max = m.stock_quantity;
+        document.getElementById("bType").value = "PICKUP";
+        document.getElementById("bAddrGrp").style.display = "none";
+        document.getElementById("bAddr").value = "";
+        calcBTotal();
+        document.getElementById("bQty").oninput = calcBTotal;
+        openM("bookMod");
+      }
+
+      function quickAdd(m) {
+        // Add to cart with default PICKUP and open cart
+        const existing = cart.find((i) => i.med.id === m.id);
+        if (existing) {
+          existing.quantity = Math.min(existing.quantity + 1, m.stock_quantity);
+        } else {
+          cart.push({
+            med: m,
+            quantity: 1,
+            deliveryType: "PICKUP",
+            deliveryAddress: "",
+          });
+        }
+        saveCart();
+        renderCart();
+        openCart();
+        alert_(`✅ ${m.medicine_name} added to cart!`, "ok", 3);
+      }
+
+      function toggleBAddr() {
+        document.getElementById("bAddrGrp").style.display =
+          document.getElementById("bType").value === "HOME_DELIVERY"
+            ? "block"
+            : "none";
+      }
+      function calcBTotal() {
+        if (!selMed) return;
+        const qty = parseInt(document.getElementById("bQty").value) || 1;
+        document.getElementById("bTotal").textContent =
+          `Total: ${rupee(selMed.price * qty)}`;
+      }
+
+      function addToCartFromModal() {
+        if (!selMed) return;
+        const qty = parseInt(document.getElementById("bQty").value) || 1;
+        const type = document.getElementById("bType").value;
+        const addr = document.getElementById("bAddr").value.trim();
+        if (type === "HOME_DELIVERY" && !addr) {
+          alert_("Enter delivery address.", "err");
+          return;
+        }
+        const existing = cart.find((i) => i.med.id === selMed.id);
+        if (existing) {
+          existing.quantity = Math.min(
+            existing.quantity + qty,
+            selMed.stock_quantity,
+          );
+          existing.deliveryType = type;
+          existing.deliveryAddress = addr;
+        } else {
+          cart.push({
+            med: selMed,
+            quantity: qty,
+            deliveryType: type,
+            deliveryAddress: addr,
+          });
+        }
+        saveCart();
+        renderCart();
+        closeM("bookMod");
+        alert_(`✅ ${selMed.medicine_name} added to cart!`, "ok", 3);
+      }
+
+      async function directBook() {
+        if (!selMed) return;
+        const qty = parseInt(document.getElementById("bQty").value) || 1;
+        const type = document.getElementById("bType").value;
+        const addr = document.getElementById("bAddr").value.trim();
+        if (qty < 1 || qty > selMed.stock_quantity) {
+          alert_("Invalid quantity.", "err");
+          return;
+        }
+        if (type === "HOME_DELIVERY" && !addr) {
+          alert_("Enter delivery address.", "err");
+          return;
+        }
+        const btn = document.getElementById("bookBtn");
+        btn.disabled = true;
+        btn.textContent = "Placing…";
+        const data = await api("/api/cart/checkout", {
+          items: [
+            {
+              medicineId: selMed.id,
+              quantity: qty,
+              deliveryType: type,
+              deliveryAddress: addr,
+            },
+          ],
+        });
+        btn.disabled = false;
+        btn.textContent = "⚡ Order Now";
+        if (data.success && data.placed.length) {
+          closeM("bookMod");
+          const totalAmount = data.placed[0].total;
+          sessionStorage.setItem('paymentAmount', totalAmount);
+          sessionStorage.setItem('paymentOrderIds', data.placed[0].orderId);
+          window.location.href = "payment.html";
+          selMed = null;
+        } else {
+          const err =
+            data.failed && data.failed[0]
+              ? data.failed[0].reason
+              : data.error || "Order failed.";
+          alert_(err, "err");
+        }
+      }
+
+      // ═══ CART ════════════════════════════════════════════════
+      function saveCart() {
+        try {
+          localStorage.setItem("mf_cart", JSON.stringify(cart));
+        } catch {}
+      }
+      function loadCart() {
+        try {
+          const s = localStorage.getItem("mf_cart");
+          if (s) cart = JSON.parse(s);
+        } catch {
+          cart = [];
+        }
+        renderCart();
+      }
+
+      function loadFavorites() {
+        try {
+          const s = localStorage.getItem("mf_favorites");
+          if (s) favorites = JSON.parse(s);
+        } catch {
+          favorites = [];
+        }
+        updateFavoriteButtons();
+      }
+
+      function saveFavorites() {
+        try {
+          localStorage.setItem("mf_favorites", JSON.stringify(favorites));
+        } catch {}
+      }
+
+      function toggleFavorite(m) {
+        const idx = favorites.findIndex(f => f.id === m.id);
+        if (idx > -1) {
+          favorites.splice(idx, 1);
+        } else {
+          favorites.push(m);
+        }
+        saveFavorites();
+        updateFavoriteButtons();
+        if (document.getElementById("s-favorites").style.display !== "none") {
+          displayFavorites();
+        }
+      }
+
+      function updateFavoriteButtons() {
+        document.querySelectorAll('[id^="fav-"]').forEach(btn => {
+          const id = parseInt(btn.id.replace('fav-', ''));
+          const isFav = favorites.some(f => f.id === id);
+          btn.textContent = isFav ? "💔 Remove" : "❤️ Favorite";
+        });
+      }
+
+      function displayFavorites() {
+        const el = document.getElementById("favoritesList");
+        if (!favorites.length) {
+          el.innerHTML = '<div class="alert awn show">No favorites yet. Search medicines and add to favorites.</div>';
+          return;
+        }
+        el.innerHTML = `<p class="td mb1">Found <strong style="color:#f8fafc">${favorites.length}</strong> favorite(s)</p>`;
+        const grid = document.createElement("div");
+        grid.className = "mg";
+
+        favorites.forEach((m) => {
+          const sc =
+            m.stock_quantity > 20
+              ? "#6ee7b7"
+              : m.stock_quantity > 5
+                ? "#fde68a"
+                : "#fca5a5";
+          const rx = m.requires_prescription
+            ? '<span class="badge brx">Rx</span>'
+            : '<span class="badge botc">OTC</span>';
+          const del = m.delivery_available
+            ? '<span class="badge" style="background:rgba(6,182,212,.1);color:#67e8f9;">🚚 Delivery</span>'
+            : "";
+          const c = document.createElement("div");
+          c.className = "mc";
+          c.innerHTML = `
+      <div class="mn">${m.medicine_name}</div>
+      <div class="mb2">${m.brand || "—"} · ${m.category || ""}</div>
+      <div class="mp">${rupee(m.price)} <small>/ ${m.unit}</small></div>
+      <div class="mi" style="color:${sc}">📦 Stock: ${m.stock_quantity} ${m.unit}s</div>
+      <div class="mtags mt1">${rx} ${del}</div>
+      <div class="mpharm mt1">🏪 ${m.pharmacy_name}</div>
+      <div class="madr">📌 ${m.pharmacy_address}</div>
+      <div class="mc-actions">
+        <button class="btn bo" onclick='toggleFavorite(${JSON.stringify(m).replace(/"/g, "&quot;").replace(/'/g, "&#39;")})'>💔 Remove</button>
+        <button class="btn bo" onclick='openBook(${JSON.stringify(m).replace(/"/g, "&quot;").replace(/'/g, "&#39;")})'>🛒 Add to Cart</button>
+        <button class="btn bg" onclick='quickAdd(${JSON.stringify(m).replace(/"/g, "&quot;").replace(/'/g, "&#39;")})'>⚡ Buy Now</button>
+      </div>`;
+          grid.appendChild(c);
+        });
+        el.appendChild(grid);
+      }
+
+      function renderCart() {
+        const el = document.getElementById("cartItems");
+        const badge = document.getElementById("cartBadge");
+        const total_items = cart.reduce((s, i) => s + i.quantity, 0);
+
+        // Badge
+        badge.textContent = total_items;
+        badge.classList.toggle("hidden", total_items === 0);
+
+        if (!cart.length) {
+          el.innerHTML =
+            '<div class="cp-empty"><div class="ei">🛒</div><p>Your cart is empty.<br/>Search medicines and add to cart.</p></div>';
+          document.getElementById("cartTotal").textContent = "₹0.00";
+          document.getElementById("homeAddrWrap").style.display = "none";
+          return;
+        }
+
+        let hasHome = cart.some((i) => i.deliveryType === "HOME_DELIVERY");
+        document.getElementById("homeAddrWrap").style.display = hasHome
+          ? "block"
+          : "none";
+
+        const total = cart.reduce((s, i) => s + i.med.price * i.quantity, 0);
+        document.getElementById("cartTotal").textContent = rupee(total);
+
+        el.innerHTML = cart
+          .map(
+            (item, idx) => `
+    <div class="cart-item">
+      <div class="ci-name">${item.med.medicine_name}</div>
+      <div class="ci-pharm">🏪 ${item.med.pharmacy_name}</div>
+      <div class="ci-row">
+        <div class="ci-qty">
+          <button class="qty-btn" onclick="changeQty(${idx},-1)">−</button>
+          <span class="ci-qnum">${item.quantity}</span>
+          <button class="qty-btn" onclick="changeQty(${idx},1)">+</button>
+        </div>
+        <span class="ci-price">${rupee(item.med.price * item.quantity)}</span>
+        <button class="ci-del" onclick="removeFromCart(${idx})" title="Remove">🗑️</button>
+      </div>
+      <div class="ci-delivery">
+        <select onchange="setDelivery(${idx},this.value)" style="width:100%;padding:.4rem .7rem;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:6px;color:#f8fafc;font-size:.78rem;font-family:'Outfit',sans-serif;outline:none;">
+          <option value="PICKUP"       ${item.deliveryType === "PICKUP" ? "selected" : ""}>🏪 Pickup</option>
+          <option value="HOME_DELIVERY"${item.deliveryType === "HOME_DELIVERY" ? "selected" : ""}>🚚 Home Delivery</option>
+        </select>
+      </div>
+    </div>`,
+          )
+          .join("");
+      }
+
+      function changeQty(idx, delta) {
+        cart[idx].quantity = Math.max(
+          1,
+          Math.min(cart[idx].quantity + delta, cart[idx].med.stock_quantity),
+        );
+        saveCart();
+        renderCart();
+      }
+      function removeFromCart(idx) {
+        cart.splice(idx, 1);
+        saveCart();
+        renderCart();
+      }
+      function setDelivery(idx, val) {
+        cart[idx].deliveryType = val;
+        saveCart();
+        renderCart();
+      }
+
+      function openCart() {
+        document.getElementById("cartPanel").classList.add("open");
+        document.getElementById("dim").classList.add("show");
+      }
+      function closeCart() {
+        document.getElementById("cartPanel").classList.remove("open");
+        document.getElementById("dim").classList.remove("show");
+      }
+      function closePanels() {
+        closeCart();
+        closeNotif();
+      }
+
+      async function checkout() {
+        if (!cart.length) {
+          alert_("Cart is empty.", "warn");
+          return;
+        }
+        const globalAddr = document.getElementById("globalAddr").value.trim();
+        const hasHome = cart.some((i) => i.deliveryType === "HOME_DELIVERY");
+        if (hasHome && !globalAddr) {
+          alert_("Enter delivery address for home delivery items.", "err");
+          return;
+        }
+
+        const items = cart.map((i) => ({
+          medicineId: i.med.id,
+          quantity: i.quantity,
+          deliveryType: i.deliveryType,
+          deliveryAddress: i.deliveryType === "HOME_DELIVERY" ? globalAddr : "",
+        }));
+
+        const btn = document.getElementById("checkoutBtn");
+        btn.disabled = true;
+        btn.textContent = "Placing orders…";
+
+        const data = await api("/api/cart/checkout", { items });
+
+        btn.disabled = false;
+        btn.textContent = "✅ Place All Orders";
+
+        if (data.success) {
+          const placed = data.placed || [],
+            failed = data.failed || [];
+          if (placed.length) {
+            cart = cart.filter(
+              (i) =>
+                !placed.some((p) => p.medicineName === i.med.medicine_name),
+            );
+            saveCart();
+            renderCart();
+            closeCart();
+            
+            const totalAmount = placed.reduce((sum, item) => sum + item.total, 0);
+            const orderIds = placed.map(p => p.orderId).join(',');
+            sessionStorage.setItem('paymentAmount', totalAmount);
+            sessionStorage.setItem('paymentOrderIds', orderIds);
+            window.location.href = "payment.html";
+          }
+          if (failed.length) {
+            alert_(
+              `⚠️ ${failed.length} item(s) failed: ${failed.map((f) => f.reason || f.name).join(", ")}`,
+              "warn",
+              0,
+            );
+          }
+        } else {
+          alert_(data.error || "Checkout failed.", "err");
+        }
+      }
+
+      // ═══ ORDERS ══════════════════════════════════════════════
+      async function loadOrders() {
+        const tb = document.getElementById("ordTb");
+        tb.innerHTML =
+          '<tr><td colspan="8"><div class="sc"><div class="spin"></div></div></td></tr>';
+        const data = await api("/api/orders/user");
+        if (!Array.isArray(data)) {
+          tb.innerHTML = `<tr><td colspan="8" class="td">${data.error || "Failed"}</td></tr>`;
+          return;
+        }
+        if (!data.length) {
+          tb.innerHTML =
+            '<tr><td colspan="8"><div class="empty"><div class="ei">📦</div><p>No orders yet.</p></div></td></tr>';
+          return;
+        }
+        tb.innerHTML = data
+          .map(
+            (o) => `
+    <tr>
+      <td><strong style="color:#10b981">#${o.id}</strong></td>
+      <td><strong>${o.medicine_name}</strong><br/><span class="td">${o.brand || ""}</span></td>
+      <td>${o.pharmacy_name}<br/><span class="td">${o.pharmacy_phone || ""}</span></td>
+      <td>${o.quantity} ${o.unit}</td>
+      <td><strong>${rupee(o.total_price)}</strong></td>
+      <td>${o.delivery_type === "HOME_DELIVERY" ? "🚚 Home" : "🏪 Pickup"}</td>
+      <td>${badge(o.status)}</td>
+      <td><span class="td">${dt(o.order_date)}</span></td>
+    </tr>`,
+          )
+          .join("");
+      }
+
+      // ═══ NOTIFICATIONS ════════════════════════════════════════
+      async function pollNotifications() {
+        try {
+          const data = await api("/api/notifications");
+          if (!Array.isArray(data)) return;
+          const unread = data.filter((n) => !n.is_read).length;
+          const badge = document.getElementById("notifBadge");
+          badge.textContent = unread;
+          badge.classList.toggle("hidden", unread === 0);
+        } catch {}
+      }
+
+      async function openNotif() {
+        document.getElementById("notifPanel").classList.add("open");
+        document.getElementById("dim").classList.add("show");
+        const el = document.getElementById("notifItems");
+        el.innerHTML = '<div class="sc"><div class="spin"></div></div>';
+        const data = await api("/api/notifications");
+        if (!Array.isArray(data) || !data.length) {
+          el.innerHTML =
+            '<div class="cp-empty"><div class="ei">🔔</div><p>No notifications yet.</p></div>';
+          return;
+        }
+        el.innerHTML = data
+          .map(
+            (n) => `
+    <div class="ni-card ${n.is_read ? "" : "unread"}" onclick="markRead(${n.id},this)">
+      <div class="ni-msg">${n.message}</div>
+      <div class="ni-time">${dt(n.created_at)}</div>
+    </div>`,
+          )
+          .join("");
+        pollNotifications();
+      }
+      function closeNotif() {
+        document.getElementById("notifPanel").classList.remove("open");
+        document.getElementById("dim").classList.remove("show");
+      }
+      async function markRead(id, el) {
+        await api("/api/notifications/read", { id });
+        el.classList.remove("unread");
+        pollNotifications();
+      }
+      async function markAllRead() {
+        await api("/api/notifications/readall", {});
+        document
+          .querySelectorAll(".ni-card.unread")
+          .forEach((c) => c.classList.remove("unread"));
+        pollNotifications();
+      }
+
+      // ═══ MAP ════════════════════════════════════════════════
+      let directionsService;
+      let directionsRenderer;
+      let deliveryMarker;
+      let trackingInterval;
+
+      function updateDeliveryMarker(lat, lng) {
+        if (!leafMap) return;
+        const pos = { lat, lng };
+
+        if (!deliveryMarker) {
+          deliveryMarker = new google.maps.Marker({
+            position: pos,
+            map: leafMap,
+            title: "Delivery Agent",
+            icon: "https://maps.google.com/mapfiles/ms/icons/green-dot.png"
+          });
+        } else {
+          deliveryMarker.setPosition(pos);
+        }
+      }
+
+      function getDistance(lat1, lon1, lat2, lon2) {
+        const R = 6371; // km
+        const toRad = (value) => value * Math.PI / 180;
+
+        const dLat = toRad(lat2 - lat1);
+        const dLon = toRad(lon2 - lon1);
+
+        const a =
+          Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+          Math.cos(toRad(lat1)) *
+          Math.cos(toRad(lat2)) *
+          Math.sin(dLon / 2) *
+          Math.sin(dLon / 2);
+
+        const c = 2 * Math.asin(Math.sqrt(a));
+        const distance = R * c;
+
+        return distance;
+      }
+
+      async function initMap() {
+        const defaultLat = uLat || 13.0827;
+        const defaultLng = uLng || 80.2707;
+
+        const mapStyles = [
+          { elementType: "geometry", stylers: [{ color: "#f5f5f5" }] },
+          { elementType: "labels.text.fill", stylers: [{ color: "#616161" }] },
+          { elementType: "labels.text.stroke", stylers: [{ color: "#ffffff" }] },
+          { featureType: "road", elementType: "geometry", stylers: [{ color: "#ffffff" }] },
+          { featureType: "water", elementType: "geometry", stylers: [{ color: "#c9e6ff" }] }
+        ];
+
+        const mapEl = document.getElementById("map");
+        if (!leafMap || typeof leafMap.setCenter !== 'function') {
+          leafMap = new google.maps.Map(mapEl, {
+            zoom: 14,
+            center: { lat: defaultLat, lng: defaultLng },
+            styles: mapStyles,
+            disableDefaultUI: true,
+            zoomControl: true
+          });
+
+          directionsService = new google.maps.DirectionsService();
+          directionsRenderer = new google.maps.DirectionsRenderer({
+            suppressMarkers: false,
+            polylineOptions: {
+              strokeColor: "#4285F4",
+              strokeWeight: 5
+            }
+          });
+          directionsRenderer.setMap(leafMap);
+
+          // Start tracking simulation
+          if (trackingInterval) clearInterval(trackingInterval);
+          trackingInterval = setInterval(async () => {
+            try {
+              const res = await fetch("http://10.67.132.109:3000/api/delivery-location");
+              const data = await res.json();
+              if (data && data.lat) {
+                document.getElementById("statusText").innerHTML = "On the way...";
+                document.getElementById("statusText").style.color = "#10b981";
+                updateDeliveryMarker(data.lat, data.lng);
+              }
+            } catch (err) {}
+          }, 5000);
+
+        } else {
+          leafMap.setCenter({ lat: defaultLat, lng: defaultLng });
+        }
+
+        // Add User Location Marker (Blue Dot)
+        new google.maps.Marker({
+          position: { lat: defaultLat, lng: defaultLng },
+          map: leafMap,
+          title: "Your Location",
+          icon: {
+            path: google.maps.SymbolPath.CIRCLE,
+            scale: 8,
+            fillColor: "#4285F4",
+            fillOpacity: 1,
+            strokeWeight: 2,
+            strokeColor: "#fff"
+          }
+        });
+
+        const list = document.getElementById("pharmacyList");
+        if (list) list.innerHTML = '<div style="padding: 10px; color: #64748b;">Searching...</div>';
+
+        try {
+          // Fetch all nearby pharmacies (50km)
+          const d = await api(`/api/pharmacies/nearby?lat=${defaultLat}&lng=${defaultLng}&radius=50`);
+          const pharmacies = d.results || [];
+          
+          let radius = 1;
+          let nearby = [];
+
+          while (nearby.length === 0 && radius <= 5) {
+            nearby = pharmacies.filter(p => getDistance(defaultLat, defaultLng, +p.latitude, +p.longitude) <= radius);
+            if (nearby.length === 0) radius += 2;
+          }
+
+          if (nearby.length === 0) {
+            if (list) list.innerHTML = '<div style="padding: 10px; color: #f43f5e;">No pharmacies found within 5 km.</div>';
+            return;
+          }
+
+          // Nearest First sorting
+          nearby.sort((a, b) => getDistance(defaultLat, defaultLng, +a.latitude, +a.longitude) - getDistance(defaultLat, defaultLng, +b.latitude, +b.longitude));
+
+          if (list) list.innerHTML = '';
+          const bounds = new google.maps.LatLngBounds();
+          bounds.extend({ lat: defaultLat, lng: defaultLng });
+
+          window.mapPharmacyItems = [];
+
+          nearby.forEach((p, index) => {
+            const dist = getDistance(defaultLat, defaultLng, +p.latitude, +p.longitude).toFixed(2);
+            bounds.extend({ lat: +p.latitude, lng: +p.longitude });
+
+            const marker = new google.maps.Marker({
+              position: { lat: +p.latitude, lng: +p.longitude },
+              map: leafMap,
+              title: p.pharmacy_name,
+              icon: "https://maps.google.com/mapfiles/ms/icons/red-dot.png"
+            });
+
+            const info = new google.maps.InfoWindow({
+              content: `
+                <div style="font-family:Arial; color:#0f172a; padding:5px;">
+                  <b>${p.pharmacy_name}</b><br/>
+                  Distance: ${dist} km<br/>
+                  <span style="font-size:0.85em; color:#64748b;">${p.address}</span><br/>
+                  <div style="margin-top: 8px; display:flex; gap: 5px; flex-wrap: wrap;">
+                    <button class="btn bg" style="padding: 4px 8px; font-size: 0.8rem; border-radius: 4px; border: none; cursor: pointer; flex: 1;" onclick="openBook(${JSON.stringify(p).replace(/"/g, "&quot;").replace(/'/g, "&#39;")})">Order</button>
+                    <a class="btn bo" style="padding: 4px 8px; font-size: 0.8rem; border-radius: 4px; border: 1px solid #06b6d4; color: #06b6d4; text-decoration: none; text-align: center; flex: 1;" href="tel:9876543210">📞 Call</a>
+                    <button class="btn bo" style="padding: 4px 8px; font-size: 0.8rem; border-radius: 4px; border: 1px solid #10b981; cursor: pointer; color: #10b981; flex: 1;" onclick="showRoute(${p.latitude}, ${p.longitude}, 'DRIVING')">Navigate</button>
+                  </div>
+                </div>
+              `
+            });
+
+            marker.addListener("click", () => info.open(leafMap, marker));
+
+            window.mapPharmacyItems.push({ name: p.pharmacy_name, marker, info, lat: p.latitude, lng: p.longitude, dist });
+
+            if (list) {
+              list.innerHTML += `
+                <div class="pharmacy-list-item" data-idx="${index}" style="margin-bottom:10px; padding:8px; border-bottom:1px solid #eee; cursor:pointer;" onclick="highlightMapPharmacy(${index})">
+                  <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <b>${p.pharmacy_name}</b>
+                    <button class="btn bo" style="padding: 2px 6px; font-size: 0.7rem; border-radius: 4px; border: 1px solid #06b6d4; cursor: pointer; color: #06b6d4;" onclick="event.stopPropagation(); openInMaps(${p.latitude}, ${p.longitude})">App ↗</button>
+                  </div>
+                  ${dist} km away
+                </div>
+              `;
+            }
+          });
+
+          leafMap.fitBounds(bounds);
+        } catch (e) {
+          if (list) list.innerHTML = '<div style="padding: 10px; color: #f43f5e;">Failed to load pharmacies.</div>';
+        }
+      }
+
+      function highlightMapPharmacy(idx) {
+        if (!window.mapPharmacyItems || !window.mapPharmacyItems[idx]) return;
+        const item = window.mapPharmacyItems[idx];
+        leafMap.setCenter({ lat: +item.lat, lng: +item.lng });
+        leafMap.setZoom(16);
+        item.marker.setAnimation(google.maps.Animation.BOUNCE);
+        setTimeout(() => item.marker.setAnimation(null), 1400); // Bounce twice
+        item.info.open(leafMap, item.marker);
+        
+        // Highlight in sidebar
+        document.querySelectorAll('.pharmacy-list-item').forEach(el => el.style.background = 'transparent');
+        const selectedEl = document.querySelector(`.pharmacy-list-item[data-idx="${idx}"]`);
+        if(selectedEl) selectedEl.style.background = '#f1f5f9';
+      }
+
+      function filterMapPharmacies() {
+        const query = document.getElementById("mapSearch").value.toLowerCase();
+        const items = document.querySelectorAll('.pharmacy-list-item');
+        items.forEach((item, idx) => {
+          const data = window.mapPharmacyItems[idx];
+          if (data && data.name.toLowerCase().includes(query)) {
+            item.style.display = 'block';
+            data.marker.setMap(leafMap);
+          } else {
+            item.style.display = 'none';
+            data.marker.setMap(null);
+          }
+        });
+      }
+
+      function showRoute(destLat, destLng, travelMode) {
+        const defaultLat = uLat || 13.0827;
+        const defaultLng = uLng || 80.2707;
+
+        if (!directionsService || !directionsRenderer) return;
+
+        const request = {
+          origin: { lat: defaultLat, lng: defaultLng },
+          destination: { lat: +destLat, lng: +destLng },
+          travelMode: google.maps.TravelMode[travelMode || "DRIVING"]
+        };
+
+        directionsService.route(request, (result, status) => {
+          if (status === "OK") {
+            directionsRenderer.setDirections(result);
+
+            const leg = result.routes[0].legs[0];
+            document.getElementById("routeInfo").style.display = "block";
+            document.getElementById("routeStats").innerHTML = `
+              <div style="display:flex; justify-content:space-between; margin-top:5px;">
+                <span><b>🚗 Distance:</b> ${leg.distance.text}</span>
+                <span><b>⏳ ETA:</b> ${leg.duration.text}</span>
+              </div>
+              <div style="margin-top: 10px; display:flex; gap: 5px;">
+                <button onclick="showRoute(${destLat}, ${destLng}, 'DRIVING')" class="btn ${travelMode==='DRIVING'?'bg':'bo'}" style="padding:4px; font-size:0.75rem; flex:1;">Driving</button>
+                <button onclick="showRoute(${destLat}, ${destLng}, 'WALKING')" class="btn ${travelMode==='WALKING'?'bg':'bo'}" style="padding:4px; font-size:0.75rem; flex:1;">Walking</button>
+              </div>
+            `;
+          } else {
+            alert_("Route not found: " + status, "err");
+          }
+        });
+      }
+
+      function clearRoute() {
+        if (directionsRenderer) directionsRenderer.set("directions", null);
+        document.getElementById("routeInfo").style.display = "none";
+      }
+
+      function openInMaps(lat, lng) {
+        const defaultLat = uLat || 13.0827;
+        const defaultLng = uLng || 80.2707;
+        const url = \`https://www.google.com/maps/dir/?api=1&origin=\${defaultLat},\${defaultLng}&destination=\${lat},\${lng}&travelmode=driving\`;
+        window.open(url, "_blank");
+      }
+    </script>
+  </body>
+</html>

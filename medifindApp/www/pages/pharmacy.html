@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>MediFind – Pharmacy Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Playfair+Display:wght@700&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="../css/style.css"/>
+</head>
+<body>
+<div class="dim" id="dim" onclick="closeNotif()"></div>
+<div class="wrap">
+<aside class="sidebar">
+  <div class="sb-logo"><h2>💊 <em>Medi</em>Find</h2><p>Pharmacy Portal</p></div>
+  <div class="sb-user"><div class="sb-name" id="sbName">…</div><div class="sb-role" id="sbRole">PHARMACY</div></div>
+  <nav class="sb-nav">
+    <div class="nav-lbl">Menu</div>
+    <button class="nb active" data-sec="dash"  onclick="showSec('dash')"><span class="ni">📊</span>Dashboard</button>
+    <button class="nb"        data-sec="meds"  onclick="showSec('meds')"><span class="ni">💊</span>Medicines</button>
+    <button class="nb"        data-sec="ord"   onclick="showSec('ord')"><span class="ni">📦</span>Orders</button>
+    <div class="nav-lbl" style="margin-top:.5rem;">Alerts</div>
+    <button class="nb" onclick="openNotif()"><span class="ni">🔔</span>Notifications <span class="notif-count hidden" id="notifBadge">0</span></button>
+  </nav>
+  <div class="sb-bot"><button class="btn-lo" onclick="logout()">🚪 Sign Out</button></div>
+</aside>
+
+<main class="main">
+  <div class="alert" id="alert"></div>
+
+  <!-- DASHBOARD -->
+  <div id="s-dash" data-sec>
+    <div class="ph"><div><div class="pt">Dashboard</div><div class="ps">Pharmacy at a glance</div></div><button class="btn bo bsm" onclick="loadDash()">↻ Refresh</button></div>
+    <div class="stats">
+      <div class="stat"><div class="sic sg">💊</div><div><div class="sn" id="st-m">—</div><div class="sl">Medicines</div></div></div>
+      <div class="stat"><div class="sic sa">⏳</div><div><div class="sn" id="st-p">—</div><div class="sl">Pending</div></div></div>
+      <div class="stat"><div class="sic sb2">✅</div><div><div class="sn" id="st-c">—</div><div class="sl">Confirmed</div></div></div>
+      <div class="stat"><div class="sic sr">📉</div><div><div class="sn" id="st-l">—</div><div class="sl">Low Stock</div></div></div>
+    </div>
+    <div class="card mt2"><div class="ct">Quick Actions</div>
+      <div class="flex gap2" style="flex-wrap:wrap;">
+        <button class="btn bg" onclick="showSec('meds');openAdd()">+ Add Medicine</button>
+        <button class="btn bo" onclick="showSec('ord')">📦 View Orders</button>
+        <button class="btn bo" onclick="openNotif()">🔔 Notifications</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MEDICINES -->
+  <div id="s-meds" data-sec class="sh">
+    <div class="ph"><div><div class="pt">Medicine Inventory</div><div class="ps">Manage your stock</div></div><div class="flex gap1"><button class="btn bg" onclick="openAdd()">+ Add Medicine</button><button class="btn bo" onclick="openBulkImport()">📤 Bulk Import</button></div></div>
+    <div class="card"><div class="tw"><table>
+      <thead><tr><th>Name</th><th>Brand</th><th>Category</th><th>Price</th><th>Stock</th><th>Unit</th><th>Rx</th><th>Delivery</th><th>Actions</th></tr></thead>
+      <tbody id="medTb"></tbody>
+    </table></div></div>
+  </div>
+
+  <!-- ORDERS -->
+  <div id="s-ord" data-sec class="sh">
+    <div class="ph"><div><div class="pt">Incoming Orders</div><div class="ps">Confirm or reject customer orders</div></div><button class="btn bo bsm" onclick="loadOrders()">↻ Refresh</button></div>
+    <div class="card"><div class="tw"><table>
+      <thead><tr><th>Order#</th><th>Customer</th><th>Medicine</th><th>Qty</th><th>Total</th><th>Delivery</th><th>Address</th><th>Status</th><th>Date</th><th>Action</th></tr></thead>
+      <tbody id="ordTb"></tbody>
+    </table></div></div>
+  </div>
+</main>
+</div>
+
+<!-- NOTIFICATIONS PANEL -->
+<div class="notif-panel" id="notifPanel">
+  <div class="np-head">
+    <h3>🔔 Notifications</h3>
+    <div class="flex gap1 ac">
+      <button class="btn bo bsm" onclick="markAllRead()">Mark All Read</button>
+      <button class="cp-close" onclick="closeNotif()">✕</button>
+    </div>
+  </div>
+  <div class="np-items" id="notifItems"></div>
+</div>
+
+<!-- ADD/EDIT MODAL -->
+<div class="mbg" id="medMod">
+  <div class="modal" style="max-width:520px;">
+    <h3 id="mTitle">+ Add Medicine</h3>
+    <div class="fg2">
+      <div class="fg"><label class="lbl">Medicine Name *</label><input id="fN" class="inp" placeholder="e.g. Paracetamol 500mg"/></div>
+      <div class="fg"><label class="lbl">Brand</label><input id="fB" class="inp" placeholder="e.g. Crocin"/></div>
+    </div>
+    <div class="fg2">
+      <div class="fg"><label class="lbl">Category</label>
+        <select id="fC" class="inp"><option>Pain Relief</option><option>Antibiotic</option><option>Allergy</option><option>Diabetes</option><option>Cardiac</option><option>Gastric</option><option>Supplement</option><option>Skin Care</option><option>General</option></select>
+      </div>
+      <div class="fg"><label class="lbl">Unit</label>
+        <select id="fU" class="inp"><option>Tablet</option><option>Capsule</option><option>Syrup</option><option>Injection</option><option>Cream</option><option>Drop</option><option>Vial</option></select>
+      </div>
+    </div>
+    <div class="fg2">
+      <div class="fg"><label class="lbl">Price (₹) *</label><input type="number" id="fP" class="inp" step="0.01" min="0"/></div>
+      <div class="fg"><label class="lbl">Stock Qty *</label><input type="number" id="fS" class="inp" min="0"/></div>
+    </div>
+    <div class="fg2">
+      <div class="fg"><label class="lbl">Prescription Required?</label><select id="fRx" class="inp"><option value="0">No (OTC)</option><option value="1">Yes (Rx)</option></select></div>
+      <div class="fg"><label class="lbl">Home Delivery?</label><select id="fD" class="inp"><option value="true">Yes ✅</option><option value="false">No ❌</option></select></div>
+    </div>
+    <div class="fg"><label class="lbl">Description</label><textarea id="fDes" class="inp" rows="2"></textarea></div>
+    <input type="hidden" id="fId"/>
+    <div class="mf">
+      <button class="btn bo" onclick="closeM('medMod')">Cancel</button>
+      <button class="btn bg" id="saveBtn" onclick="saveMed()">Save</button>
+    </div>
+  </div>
+</div>
+
+<div class="mbg" id="importMod">
+  <div class="modal" style="max-width:520px;">
+    <h3>📤 Bulk Import Medicines</h3>
+    <div class="fg">
+      <label class="lbl">Upload CSV file</label>
+      <input type="file" id="importFile" class="inp" accept=".csv" />
+    </div>
+    <div class="fg">
+      <p class="td">CSV columns: medicineName,brand,category,price,stockQuantity,unit,requiresPrescription,deliveryAvailable,description</p>
+    </div>
+    <div class="mf">
+      <button class="btn bo" onclick="closeM('importMod')">Cancel</button>
+      <button class="btn bg" id="importBtn" onclick="processImport()">Import</button>
+    </div>
+  </div>
+</div>
+
+<script src="../js/app.js"></script>
+<script>
+let allMeds=[], isEdit=false;
+
+window.onload=async function(){
+  const u=await checkAuth('PHARMACY'); if(!u) return;
+  loadDash(); pollNotifications();
+  setInterval(pollNotifications,30000);
+};
+function afterShow(id){
+  if(id==='dash') loadDash();
+  if(id==='meds') loadMeds();
+  if(id==='ord')  loadOrders();
+}
+
+async function loadDash(){
+  const [m,o]=await Promise.all([api('/api/medicines'),api('/api/orders/pharmacy')]);
+  if(Array.isArray(m)){document.getElementById('st-m').textContent=m.length;document.getElementById('st-l').textContent=m.filter(x=>x.stock_quantity<10).length;}
+  if(Array.isArray(o)){document.getElementById('st-p').textContent=o.filter(x=>x.status==='PENDING').length;document.getElementById('st-c').textContent=o.filter(x=>x.status==='CONFIRMED').length;}
+}
+
+async function loadMeds(){
+  const tb=document.getElementById('medTb');
+  tb.innerHTML='<tr><td colspan="9"><div class="sc"><div class="spin"></div></div></td></tr>';
+  const d=await api('/api/medicines');
+  if(!Array.isArray(d)){tb.innerHTML=`<tr><td colspan="9" class="td">${d.error||'Failed'}</td></tr>`;return;}
+  allMeds=d;
+  if(!d.length){tb.innerHTML='<tr><td colspan="9"><div class="empty"><div class="ei">💊</div><p>No medicines yet. Click + Add Medicine.</p></div></td></tr>';return;}
+  tb.innerHTML=d.map(m=>{
+    const sc=m.stock_quantity<5?'#fca5a5':m.stock_quantity<10?'#fde68a':'#6ee7b7';
+    return`<tr>
+      <td><strong>${m.medicine_name}</strong></td><td>${m.brand||'—'}</td><td>${m.category||'—'}</td>
+      <td><strong style="color:#10b981">${rupee(m.price)}</strong></td>
+      <td><strong style="color:${sc}">${m.stock_quantity}</strong></td>
+      <td>${m.unit}</td>
+      <td>${m.requires_prescription?'<span class="badge brx">Rx</span>':'<span class="badge botc">OTC</span>'}</td>
+      <td>${m.delivery_available?'✅':'❌'}</td>
+      <td style="white-space:nowrap;">
+        <button class="btn bo bsm" onclick="openEdit(${m.id})">✏️</button>
+        <button class="btn br bsm" onclick="delMed(${m.id})">🗑️</button>
+      </td></tr>`;
+  }).join('');
+}
+
+function openAdd(){
+  isEdit=false; document.getElementById('mTitle').textContent='+ Add Medicine';
+  ['fN','fB','fP','fS','fDes'].forEach(i=>document.getElementById(i).value='');
+  document.getElementById('fId').value=''; document.getElementById('fC').value='General';
+  document.getElementById('fU').value='Tablet'; document.getElementById('fRx').value='0';
+  document.getElementById('fD').value='true'; openM('medMod');
+}
+function openBulkImport(){
+  document.getElementById('importFile').value = '';
+  openM('importMod');
+}
+
+function parseCsv(text){
+  const lines = text.trim().split(/\r?\n/).filter(Boolean);
+  if(!lines.length) return [];
+  const headers = lines.shift().split(',').map(h=>h.trim());
+  return lines.map(line=>{
+    const values = line.split(',').map(v=>v.trim());
+    const item = {};
+    headers.forEach((h,i)=> item[h] = values[i] || '');
+    return item;
+  });
+}
+
+async function processImport(){
+  const file = document.getElementById('importFile').files[0];
+  if(!file){alert_('Select a CSV file first.','err');return;}
+  const btn = document.getElementById('importBtn'); btn.disabled=true; btn.textContent='Importing…';
+  const text = await file.text();
+  const rows = parseCsv(text);
+  if(!rows.length){alert_('CSV file is empty or invalid.','err');btn.disabled=false;btn.textContent='Import';return;}
+
+  let success=0, failed=0;
+  for(const row of rows){
+    const pl = {
+      medicineName: row.medicineName || row.name || '',
+      brand: row.brand || '',
+      category: row.category || 'General',
+      price: parseFloat(row.price) || 0,
+      stockQuantity: parseInt(row.stockQuantity) || 0,
+      unit: row.unit || 'Tablet',
+      requiresPrescription: ['1','yes','true','y'].includes((row.requiresPrescription||row.rx||'').toString().toLowerCase()),
+      deliveryAvailable: ['1','yes','true','y'].includes((row.deliveryAvailable||row.delivery||'').toString().toLowerCase()),
+      description: row.description || ''
+    };
+    if(!pl.medicineName || !pl.price || !pl.stockQuantity){ failed++; continue; }
+    const d = await api('/api/medicines/add', pl);
+    if(d && d.success) success++; else failed++;
+  }
+
+  btn.disabled=false; btn.textContent='Import';
+  closeM('importMod');
+  loadMeds();
+  loadDash();
+  alert_(`Import complete: ${success} added, ${failed} failed.`,`ok`,5);
+}
+
+function openEdit(id){
+  const m=allMeds.find(x=>x.id===id); if(!m) return;
+  isEdit=true; document.getElementById('mTitle').textContent='✏️ Edit Medicine';
+  document.getElementById('fId').value=m.id; document.getElementById('fN').value=m.medicine_name;
+  document.getElementById('fB').value=m.brand||''; document.getElementById('fC').value=m.category||'General';
+  document.getElementById('fU').value=m.unit||'Tablet'; document.getElementById('fP').value=m.price;
+  document.getElementById('fS').value=m.stock_quantity; document.getElementById('fRx').value=m.requires_prescription?'1':'0';
+  document.getElementById('fD').value=m.delivery_available?'true':'false'; document.getElementById('fDes').value=m.description||'';
+  openM('medMod');
+}
+async function saveMed(){
+  const n=document.getElementById('fN').value.trim(),p=document.getElementById('fP').value,s=document.getElementById('fS').value;
+  if(!n){alert_('Medicine name required.','err');return;}
+  if(!p){alert_('Price required.','err');return;}
+  if(s===''){alert_('Stock required.','err');return;}
+  const btn=document.getElementById('saveBtn'); btn.disabled=true; btn.textContent='Saving…';
+  const pl={medicineName:n,brand:document.getElementById('fB').value.trim(),category:document.getElementById('fC').value,unit:document.getElementById('fU').value,price:parseFloat(p),stockQuantity:parseInt(s),requiresPrescription:document.getElementById('fRx').value==='1',deliveryAvailable:document.getElementById('fD').value==='true',description:document.getElementById('fDes').value.trim()};
+  if(isEdit) pl.id=parseInt(document.getElementById('fId').value);
+  const d=await api(isEdit?'/api/medicines/update':'/api/medicines/add',pl);
+  btn.disabled=false; btn.textContent='Save';
+  if(d.success){closeM('medMod');alert_(isEdit?'✅ Updated!':'✅ Added!','ok',3);loadMeds();loadDash();}
+  else alert_(d.error||'Failed.','err');
+}
+async function delMed(id){
+  if(!confirm('Delete this medicine?')) return;
+  const d=await api('/api/medicines/delete',{id});
+  if(d.success){alert_('Deleted.','ok',3);loadMeds();loadDash();}
+  else alert_(d.error||'Failed.','err');
+}
+
+async function loadOrders(){
+  const tb=document.getElementById('ordTb');
+  tb.innerHTML='<tr><td colspan="10"><div class="sc"><div class="spin"></div></div></td></tr>';
+  const d=await api('/api/orders/pharmacy');
+  if(!Array.isArray(d)){tb.innerHTML=`<tr><td colspan="10" class="td">${d.error||'Failed'}</td></tr>`;return;}
+  if(!d.length){tb.innerHTML='<tr><td colspan="10"><div class="empty"><div class="ei">📦</div><p>No orders yet.</p></div></td></tr>';return;}
+  tb.innerHTML=d.map(o=>`
+    <tr>
+      <td><strong style="color:#10b981">#${o.id}</strong></td>
+      <td><strong>${o.user_name}</strong><br/><span class="td">${o.user_phone||''}</span></td>
+      <td><strong>${o.medicine_name}</strong><br/><span class="td">${o.brand||''}</span></td>
+      <td>${o.quantity} ${o.unit}</td>
+      <td><strong>${rupee(o.total_price)}</strong></td>
+      <td>${o.delivery_type==='HOME_DELIVERY'?'🚚 Home':'🏪 Pickup'}</td>
+      <td style="max-width:120px;white-space:normal;font-size:.75rem;color:#64748b;">${o.delivery_address||'—'}</td>
+      <td>${badge(o.status)}</td>
+      <td><span class="td">${dt(o.order_date)}</span></td>
+      <td style="white-space:nowrap;">${acts(o)}</td>
+    </tr>`).join('');
+}
+function acts(o){
+  if(o.status==='PENDING')    return`<button class="btn bo bsm" onclick="setS(${o.id},'CONFIRMED')">✅ Confirm</button> <button class="btn br bsm" onclick="setS(${o.id},'REJECTED')">❌ Reject</button>`;
+  if(o.status==='CONFIRMED')  return`<button class="btn ba bsm" onclick="setS(${o.id},'DISPATCHED')">🚚 Dispatch</button>`;
+  if(o.status==='DISPATCHED') return`<button class="btn bo bsm" onclick="setS(${o.id},'DELIVERED')">✅ Delivered</button>`;
+  return'<span class="td">—</span>';
+}
+async function setS(id,status){
+  const d=await api('/api/order/status',{orderId:id,status});
+  if(d.success){alert_(`Order ${status}.`,'ok',3);loadOrders();loadDash();}
+  else alert_(d.error||'Failed.','err');
+}
+
+// Notifications
+async function pollNotifications(){
+  try{
+    const d=await api('/api/notifications'); if(!Array.isArray(d)) return;
+    const u=d.filter(n=>!n.is_read).length;
+    const b=document.getElementById('notifBadge');
+    b.textContent=u; b.classList.toggle('hidden',u===0);
+  }catch{}
+}
+async function openNotif(){
+  document.getElementById('notifPanel').classList.add('open');
+  document.getElementById('dim').classList.add('show');
+  const el=document.getElementById('notifItems');
+  el.innerHTML='<div class="sc"><div class="spin"></div></div>';
+  const d=await api('/api/notifications');
+  if(!Array.isArray(d)||!d.length){el.innerHTML='<div class="cp-empty"><div class="ei">🔔</div><p>No notifications.</p></div>';return;}
+  el.innerHTML=d.map(n=>`<div class="ni-card ${n.is_read?'':'unread'}" onclick="markRead(${n.id},this)"><div class="ni-msg">${n.message}</div><div class="ni-time">${dt(n.created_at)}</div></div>`).join('');
+  pollNotifications();
+}
+function closeNotif(){document.getElementById('notifPanel').classList.remove('open');document.getElementById('dim').classList.remove('show');}
+async function markRead(id,el){await api('/api/notifications/read',{id});el.classList.remove('unread');pollNotifications();}
+async function markAllRead(){await api('/api/notifications/readall',{});document.querySelectorAll('.ni-card.unread').forEach(c=>c.classList.remove('unread'));pollNotifications();}
+</script>
+</body>
+</html>
