@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 class TrackingScreen extends StatefulWidget {
+  const TrackingScreen({super.key});
+
   @override
   _TrackingScreenState createState() => _TrackingScreenState();
 }
