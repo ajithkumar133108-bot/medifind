@@ -161,10 +161,19 @@ INSERT INTO medicines (pharmacy_id, medicine_name, brand, category, price, stock
 INSERT INTO users (full_name, email, password, phone, address, latitude, longitude) VALUES
 ('Test User','user@test.com','user123','9000000001','No.5, Sample Street, Chennai',13.0500,80.2500);
 
-INSERT INTO delivery_persons (full_name, email, password, phone) VALUES
-('Delivery Agent','delivery@test.com','delivery123','9000000099');
+-- Delivery quick-login accounts (used by home page + delivery page)
+INSERT INTO delivery_persons (full_name, email, password, phone, is_active) VALUES
+('Delivery Agent','delivery@test.com','delivery123','9000000099',1),
+('Delivery Backup','delivery2@test.com','delivery123','9000000100',1)
+ON DUPLICATE KEY UPDATE
+  full_name = VALUES(full_name),
+  password = VALUES(password),
+  phone = VALUES(phone),
+  is_active = VALUES(is_active);
 
 SELECT 'Database ready!' AS Status;
 SELECT COUNT(*) AS pharmacies FROM pharmacies;
 SELECT COUNT(*) AS medicines FROM medicines;
 SELECT COUNT(*) AS users FROM users;
+SELECT COUNT(*) AS delivery_agents FROM delivery_persons;
+SELECT id, full_name, email, password, is_active FROM delivery_persons ORDER BY id;
