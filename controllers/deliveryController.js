@@ -25,11 +25,19 @@ async function myDeliveries(req, res) {
   try {
     let rows = await deliveryModel.listAssignedDeliveries(req.user.id);
     if (!rows.length) {
-      await deliveryModel.claimUnassignedDispatchedOrders(req.user.id, 5);
+      try {
+        await deliveryModel.claimUnassignedDispatchedOrders(req.user.id, 5);
+      } catch (claimError) {
+        // Keep endpoint stable even if auto-assignment query fails on some MySQL setups.
+        // eslint-disable-next-line no-console
+        console.error('Auto-claim deliveries failed:', claimError.message);
+      }
       rows = await deliveryModel.listAssignedDeliveries(req.user.id);
     }
     return res.json({ success: true, deliveries: rows });
   } catch (e) {
+    // eslint-disable-next-line no-console
+    console.error('myDeliveries failed:', e.message);
     return res.status(500).json({ error: e.message });
   }
 }

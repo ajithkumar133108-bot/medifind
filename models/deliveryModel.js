@@ -43,6 +43,10 @@ async function getDeliveryByOrderId(orderId) {
 }
 
 async function listAssignedDeliveries(deliveryPersonId) {
+  const safeDeliveryPersonId = Number.parseInt(deliveryPersonId, 10);
+  if (Number.isNaN(safeDeliveryPersonId) || safeDeliveryPersonId <= 0) {
+    return [];
+  }
   return db.query(
     `SELECT d.order_id, d.status, d.current_latitude, d.current_longitude, d.updated_at,
             o.user_id, o.pharmacy_id, o.delivery_type, o.delivery_address, o.status AS order_status, o.total_price, o.order_date,
@@ -52,13 +56,13 @@ async function listAssignedDeliveries(deliveryPersonId) {
      JOIN orders o ON o.id = d.order_id
      JOIN users u ON u.id = o.user_id
      JOIN pharmacies p ON p.id = o.pharmacy_id
-     WHERE d.delivery_person_id = ?
+     WHERE d.delivery_person_id = ${safeDeliveryPersonId}
      ORDER BY d.updated_at DESC`,
-    [deliveryPersonId],
   );
 }
 
 async function claimUnassignedDispatchedOrders(deliveryPersonId, limit = 5) {
+  const safeLimit = Math.max(1, Math.min(20, Number(limit) || 5));
   const rows = await db.query(
     `SELECT o.id
      FROM orders o
@@ -67,8 +71,7 @@ async function claimUnassignedDispatchedOrders(deliveryPersonId, limit = 5) {
        AND o.delivery_type = 'HOME_DELIVERY'
        AND d.id IS NULL
      ORDER BY o.order_date ASC
-     LIMIT ?`,
-    [Math.max(1, Number(limit) || 5)],
+     LIMIT ${safeLimit}`,
   );
 
   for (const row of rows) {
