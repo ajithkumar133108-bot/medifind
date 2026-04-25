@@ -294,7 +294,14 @@
       const orderIds = getOrderIds();
       if (!orderIds) { setLog("Enter Order IDs first."); return; }
       try {
-        const data = await api("/api/delivery/update", { orderId: parseInt(orderIds, 10), status: "DELIVERED" });
+        const orderId = parseInt(orderIds, 10);
+        let data;
+        try {
+          data = await api("/complete-order", { orderId });
+        } catch {
+          // Backward-compatible fallback for older servers.
+          data = await api("/api/delivery/update", { orderId, status: "DELIVERED" });
+        }
         setLog({ delivered: orderIds, response: data });
       } catch (e) {
         setLog({ delivered: orderIds, error: e.message });
