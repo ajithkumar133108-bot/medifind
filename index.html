@@ -29,7 +29,7 @@ h1 em{color:#10b981;font-style:normal;}
 .logo h2{font-family:'Playfair Display',serif;color:#f8fafc;font-size:1.4rem;margin-top:.4rem;}
 .logo p{color:#64748b;font-size:.82rem;margin-top:.2rem;}
 /* Role tabs */
-.tabs{display:grid;grid-template-columns:1fr 1fr 1fr;gap:3px;background:rgba(0,0,0,.3);border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:3px;margin-bottom:1.8rem;}
+.tabs{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:3px;background:rgba(0,0,0,.3);border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:3px;margin-bottom:1.8rem;}
 .tab{padding:.55rem;border:none;background:transparent;color:#64748b;font-family:'Outfit',sans-serif;font-size:.82rem;font-weight:600;border-radius:7px;cursor:pointer;transition:.15s;}
 .tab:hover{color:#cbd5e1;}
 .tab.on{background:#10b981;color:#fff;}
@@ -92,6 +92,7 @@ input::placeholder{color:#334155;}
     <div class="tabs">
       <button type="button" class="tab on" id="t-USER"     onclick="setRole('USER')">👤 User</button>
       <button type="button" class="tab"    id="t-PHARMACY" onclick="setRole('PHARMACY')">🏪 Pharmacy</button>
+      <button type="button" class="tab"    id="t-DELIVERY" onclick="setRole('DELIVERY')">🚚 Delivery</button>
       <button type="button" class="tab"    id="t-ADMIN"    onclick="setRole('ADMIN')">🛡 Admin</button>
     </div>
 
@@ -122,7 +123,12 @@ input::placeholder{color:#334155;}
           <div class="qi-email">ravi@medplus.com</div>
           <div class="qi-pass">ravi123</div>
         </div>
-        <div class="qi" style="grid-column:span 2;text-align:center;" onclick="fill('admin','admin123','ADMIN')">
+        <div class="qi" onclick="fill('delivery@test.com','delivery123','DELIVERY')">
+          <div class="qi-role">🚚 Delivery</div>
+          <div class="qi-email">delivery@test.com</div>
+          <div class="qi-pass">delivery123</div>
+        </div>
+        <div class="qi" onclick="fill('admin','admin123','ADMIN')">
           <div class="qi-role">🛡 Admin &nbsp;—&nbsp; admin / admin123</div>
         </div>
       </div>
@@ -178,6 +184,7 @@ async function doLogin() {
     if (data.success) {
       showMsg('✅ Login successful! Redirecting…', 'ok');
       if      (data.role === 'ADMIN')    window.location.href = 'pages/admin.html';
+      else if (data.role === 'DELIVERY') window.location.href = 'pages/delivery-man.html';
       else if (data.role === 'PHARMACY') window.location.href = 'pages/pharmacy.html';
       else                               window.location.href = 'pages/user.html';
     } else {
