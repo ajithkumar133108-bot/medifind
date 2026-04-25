@@ -352,11 +352,32 @@ app.use((req, res) => res.status(404).send('Not found'));
 
 const port = config.port;
 
+async function ensureDeliveryQuickLogin() {
+  const email = 'delivery@test.com';
+  const password = 'delivery123';
+  try {
+    await pool.execute(
+      `INSERT INTO delivery_persons (full_name, email, password, phone, is_active)
+       VALUES (?, ?, ?, ?, 1)
+       ON DUPLICATE KEY UPDATE
+         full_name = VALUES(full_name),
+         password = VALUES(password),
+         phone = VALUES(phone),
+         is_active = 1`,
+      ['Delivery Agent', email, password, '9000000099'],
+    );
+    console.log('✅ Delivery quick-login account ensured');
+  } catch (error) {
+    console.warn('⚠️ Could not ensure delivery quick-login account:', error.message);
+  }
+}
+
 async function start() {
   try {
     const conn = await pool.getConnection();
     conn.release();
     console.log('✅ MySQL connected');
+    await ensureDeliveryQuickLogin();
   } catch (error) {
     console.error('❌ MySQL connection failed:', error.message);
   }

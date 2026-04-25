@@ -210,7 +210,7 @@ async function regPharma() {
     const res  = await fetch('/api/register/pharmacy', {
       method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({
-        ownerName:pname, pharmacyName:pname, ownerName:owner,
+        pharmacyName:pname, ownerName:owner,
         email, password:pass,
         phone:   v('p_phone'),
         address: addr, city, latitude:lat, longitude:lng

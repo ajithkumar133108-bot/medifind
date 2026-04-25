@@ -1510,8 +1510,7 @@
           if (trackingInterval) clearInterval(trackingInterval);
           trackingInterval = setInterval(async () => {
             try {
-              const res = await fetch("http://10.67.132.109:5000/api/delivery-location");
-              const data = await res.json();
+              const data = await api("/api/delivery-location");
               if (data && data.lat) {
                 document.getElementById("statusText").innerHTML = "On the way...";
                 document.getElementById("statusText").style.color = "#10b981";
