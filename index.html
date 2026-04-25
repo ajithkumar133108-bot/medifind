@@ -49,6 +49,9 @@ input::placeholder{color:#334155;}
 .ok {background:rgba(16,185,129,.12);border:1px solid rgba(16,185,129,.3);color:#6ee7b7;display:block!important;}
 .footer-link{text-align:center;margin-top:1.3rem;font-size:.83rem;color:#64748b;}
 .footer-link a{color:#34d399;font-weight:600;text-decoration:none;}
+.footer-link .sep{color:#334155;margin:0 .4rem;}
+.delivery-link{display:none;text-align:center;margin-top:.8rem;font-size:.82rem;color:#64748b;}
+.delivery-link a{color:#34d399;font-weight:600;text-decoration:none;}
 /* Quick logins */
 .quick{margin-top:1.5rem;padding-top:1.3rem;border-top:1px solid rgba(255,255,255,.06);}
 .ql{display:grid;grid-template-columns:1fr 1fr;gap:.5rem;}
@@ -105,9 +108,14 @@ input::placeholder{color:#334155;}
       <input type="password" id="passInp" placeholder="Enter password" autocomplete="current-password"/>
     </div>
     <button type="button" class="btn-main" id="loginBtn" onclick="doLogin()">Sign In →</button>
+    <div class="delivery-link" id="deliveryRegLink">
+      Need a delivery account? <a href="pages/register.html?role=delivery">Register Delivery Agent</a>
+    </div>
 
     <div class="footer-link">
       No account? <a href="pages/register.html">Register here</a>
+      <span class="sep">|</span>
+      <a href="pages/register.html?role=delivery">Register Delivery Agent</a>
     </div>
 
     <div class="quick">
@@ -144,6 +152,8 @@ function setRole(r) {
   role = r;
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('on'));
   document.getElementById('t-' + r).classList.add('on');
+  const deliveryLink = document.getElementById('deliveryRegLink');
+  if (deliveryLink) deliveryLink.style.display = r === 'DELIVERY' ? 'block' : 'none';
   const lbl = document.getElementById('emailLbl');
   const inp = document.getElementById('emailInp');
   if (r === 'ADMIN') { lbl.textContent = 'Admin Username'; inp.placeholder = 'admin'; inp.type = 'text'; }
