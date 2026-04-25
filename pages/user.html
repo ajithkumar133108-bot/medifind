@@ -134,6 +134,7 @@
                     <th>Type</th>
                     <th>Status</th>
                     <th>Date</th>
+                    <th>Track</th>
                   </tr>
                 </thead>
                 <tbody id="ordTb"></tbody>
@@ -504,6 +505,7 @@
         <div class="fg">
           <label class="lbl">Delivery Type</label>
           <select id="bType" class="inp" onchange="toggleBAddr()">
+            <option value="">Select Pickup or Delivery</option>
             <option value="PICKUP">🏪 Pharmacy Pickup</option>
             <option value="HOME_DELIVERY">🚚 Home Delivery</option>
           </select>
@@ -555,6 +557,7 @@
         leafMap = null;
       let favorites = []; // [medicine objects]
       let cart = []; // [cart items]
+      let latestOrders = [];
 
       // ═══ INIT ════════════════════════════════════════════════
       window.onload = async function () {
@@ -971,7 +974,7 @@
     📦 Available: <span style="color:#6ee7b7;font-weight:700">${m.stock_quantity} ${m.unit}s</span>`;
         document.getElementById("bQty").value = 1;
         document.getElementById("bQty").max = m.stock_quantity;
-        document.getElementById("bType").value = "PICKUP";
+        document.getElementById("bType").value = "";
         document.getElementById("bAddrGrp").style.display = "none";
         document.getElementById("bAddr").value = "";
         calcBTotal();
@@ -980,23 +983,8 @@
       }
 
       function quickAdd(m) {
-        saveSelectedPharmacyFromMedicine(m);
-        // Add to cart with default PICKUP and open cart
-        const existing = cart.find((i) => i.med.id === m.id);
-        if (existing) {
-          existing.quantity = Math.min(existing.quantity + 1, m.stock_quantity);
-        } else {
-          cart.push({
-            med: m,
-            quantity: 1,
-            deliveryType: "PICKUP",
-            deliveryAddress: "",
-          });
-        }
-        saveCart();
-        renderCart();
-        openCart();
-        alert_(`✅ ${m.medicine_name} added to cart!`, "ok", 3);
+        // Buy Now should still ask user to choose pickup or delivery explicitly.
+        openBook(m);
       }
 
       function toggleBAddr() {
@@ -1017,6 +1005,10 @@
         const qty = parseInt(document.getElementById("bQty").value) || 1;
         const type = document.getElementById("bType").value;
         const addr = document.getElementById("bAddr").value.trim();
+        if (!type) {
+          alert_("Please select Pickup or Home Delivery.", "err");
+          return;
+        }
         if (type === "HOME_DELIVERY" && !addr) {
           alert_("Enter delivery address.", "err");
           return;
@@ -1050,6 +1042,10 @@
         const addr = document.getElementById("bAddr").value.trim();
         if (qty < 1 || qty > selMed.stock_quantity) {
           alert_("Invalid quantity.", "err");
+          return;
+        }
+        if (!type) {
+          alert_("Please select Pickup or Home Delivery.", "err");
           return;
         }
         if (type === "HOME_DELIVERY" && !addr) {
@@ -1232,6 +1228,7 @@
       </div>
       <div class="ci-delivery">
         <select onchange="setDelivery(${idx},this.value)" style="width:100%;padding:.4rem .7rem;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:6px;color:#f8fafc;font-size:.78rem;font-family:'Outfit',sans-serif;outline:none;">
+          <option value="" ${!item.deliveryType ? "selected" : ""}>Select Pickup/Delivery</option>
           <option value="PICKUP"       ${item.deliveryType === "PICKUP" ? "selected" : ""}>🏪 Pickup</option>
           <option value="HOME_DELIVERY"${item.deliveryType === "HOME_DELIVERY" ? "selected" : ""}>🚚 Home Delivery</option>
         </select>
@@ -1276,6 +1273,10 @@
       async function checkout() {
         if (!cart.length) {
           alert_("Cart is empty.", "warn");
+          return;
+        }
+        if (cart.some((i) => !i.deliveryType)) {
+          alert_("Please choose Pickup or Home Delivery for all items.", "err");
           return;
         }
         const globalAddr = document.getElementById("globalAddr").value.trim();
@@ -1343,17 +1344,18 @@
       async function loadOrders() {
         const tb = document.getElementById("ordTb");
         tb.innerHTML =
-          '<tr><td colspan="8"><div class="sc"><div class="spin"></div></div></td></tr>';
+          '<tr><td colspan="9"><div class="sc"><div class="spin"></div></div></td></tr>';
         const data = await api("/api/orders/user");
         if (!Array.isArray(data)) {
-          tb.innerHTML = `<tr><td colspan="8" class="td">${data.error || "Failed"}</td></tr>`;
+          tb.innerHTML = `<tr><td colspan="9" class="td">${data.error || "Failed"}</td></tr>`;
           return;
         }
         if (!data.length) {
           tb.innerHTML =
-            '<tr><td colspan="8"><div class="empty"><div class="ei">📦</div><p>No orders yet.</p></div></td></tr>';
+            '<tr><td colspan="9"><div class="empty"><div class="ei">📦</div><p>No orders yet.</p></div></td></tr>';
           return;
         }
+        latestOrders = data;
         tb.innerHTML = data
           .map(
             (o) => `
@@ -1366,9 +1368,26 @@
       <td>${o.delivery_type === "HOME_DELIVERY" ? "🚚 Home" : "🏪 Pickup"}</td>
       <td>${badge(o.status)}</td>
       <td><span class="td">${dt(o.order_date)}</span></td>
+      <td><button class="btn bo bsm" onclick="openTrackingForOrder(${o.id})">Track</button></td>
     </tr>`,
           )
           .join("");
+      }
+
+      function openTrackingForOrder(orderId) {
+        const order = latestOrders.find((o) => Number(o.id) === Number(orderId));
+        const deliveryType = order?.delivery_type || "PICKUP";
+        const deliveryAddress = order?.delivery_address || "";
+        localStorage.setItem("currentOrderIds", String(orderId));
+        if (deliveryType === "HOME_DELIVERY") {
+          localStorage.setItem("mf_has_home_delivery", "true");
+          localStorage.setItem("mf_delivery_address", deliveryAddress || "");
+          window.location.href = "home-delivery.html";
+          return;
+        }
+        localStorage.removeItem("mf_has_home_delivery");
+        localStorage.removeItem("mf_delivery_address");
+        window.location.href = "tracking.html";
       }
 
       // ═══ NOTIFICATIONS ════════════════════════════════════════
