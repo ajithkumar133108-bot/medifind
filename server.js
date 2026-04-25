@@ -16,6 +16,7 @@ const notificationRoutes = require('./routes/notifications');
 const adminRoutes = require('./routes/admin');
 const deliveryRoutes = require('./routes/delivery');
 const orderModel = require('./models/orderModel');
+const notificationModel = require('./models/notificationModel');
 
 // ═══ TRACKING (DEMO) ════════════════════════════════════════
 // In-memory sessions keyed by orderIds string.
@@ -51,12 +52,12 @@ function computeTracking(session) {
   // Timeline (ms)
   const T_ASSIGNED = 8000;
   const T_PICKED = 20000;
-  const T_ONTHEWAY_END = 70000;
+  const T_ONTHEWAY_START = 20000;
 
   let status = 'Assigned';
   if (elapsedMs >= T_ASSIGNED) status = 'Picked';
   if (elapsedMs >= T_PICKED) status = 'On the way';
-  if (elapsedMs >= T_ONTHEWAY_END) status = 'Delivered';
+  if (session.deliveredByAgent) status = 'Delivered';
 
   const from = session.from;
   const to = session.to;
@@ -64,7 +65,7 @@ function computeTracking(session) {
   // Move agent from pharmacy -> user during "On the way"
   let agent = null;
   if (from && to && from.lat != null && from.lng != null && to.lat != null && to.lng != null) {
-    const t = clamp01((elapsedMs - T_PICKED) / (T_ONTHEWAY_END - T_PICKED));
+    const t = clamp01((elapsedMs - T_ONTHEWAY_START) / 60000);
     agent = {
       lat: from.lat + (to.lat - from.lat) * t,
       lng: from.lng + (to.lng - from.lng) * t,
@@ -76,6 +77,8 @@ function computeTracking(session) {
     startedAt: session.startedAt,
     elapsedMs,
     status,
+    deliveredByAgent: !!session.deliveredByAgent,
+    receivedByUser: !!session.receivedByUser,
     from,
     to,
     agent,
@@ -186,6 +189,8 @@ app.post('/save-order', async (req, res) => {
     trackingSessions.set(String(orderIds), {
       orderIds: String(orderIds),
       startedAt: Date.now(),
+      deliveredByAgent: false,
+      receivedByUser: false,
       from: (from.lat != null && from.lng != null) ? from : null,
       to: (to.lat != null && to.lng != null) ? to : null,
     });
@@ -252,6 +257,7 @@ app.get('/api/tracking', async (req, res) => {
         tracking = {
           ...tracking,
           status: statusMap[d.status] || tracking.status,
+          deliveredByAgent: d.status === 'DELIVERED' ? true : tracking.deliveredByAgent,
           agent: (d.current_latitude != null && d.current_longitude != null)
             ? { lat: Number(d.current_latitude), lng: Number(d.current_longitude) }
             : tracking.agent,
@@ -286,6 +292,7 @@ app.post('/api/tracking/update', (req, res) => {
   if (!session) return res.status(404).json({ success: false, message: 'Tracking session not found' });
 
   if (done) {
+    session.deliveredByAgent = true;
     session.manual = { status: 'Delivered', agent: session.manual?.agent || null };
     return res.json({ success: true });
   }
@@ -299,6 +306,47 @@ app.post('/api/tracking/update', (req, res) => {
   };
   trackingSessions.set(String(orderIds), session);
   return res.json({ success: true });
+});
+
+app.post('/api/tracking/confirm-received', async (req, res) => {
+  if (!req.user || req.user.role !== 'USER') {
+    return res.status(401).json({ success: false, message: 'Login required.' });
+  }
+  const { orderIds } = req.body || {};
+  if (!orderIds) {
+    return res.status(400).json({ success: false, message: 'orderIds is required' });
+  }
+
+  const session = trackingSessions.get(String(orderIds));
+  if (session) {
+    session.receivedByUser = true;
+    trackingSessions.set(String(orderIds), session);
+  }
+
+  const ids = String(orderIds)
+    .split(',')
+    .map((id) => parseInt(id.trim(), 10))
+    .filter((id) => !Number.isNaN(id));
+
+  try {
+    for (const id of ids) {
+      await orderModel.updateOrderStatus(id, 'DELIVERED');
+      const details = await orderModel.getOrderDetails(id);
+      if (details && details.pharmacy_id) {
+        await notificationModel.createNotification(
+          null,
+          details.pharmacy_id,
+          `✅ User confirmed medicine received for order #${id}. Pharmacy delivery completed.`,
+          'ORDER_UPDATE'
+        );
+      }
+    }
+  } catch (_) {}
+
+  return res.json({
+    success: true,
+    message: 'Medicine received confirmed. Pharmacy has been notified.',
+  });
 });
 app.use((req, res) => res.status(404).send('Not found'));
 

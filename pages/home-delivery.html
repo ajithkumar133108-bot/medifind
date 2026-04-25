@@ -60,6 +60,9 @@
           <div class="pill" id="statusPill">—</div>
         </div>
         <div class="muted" style="margin-top:.55rem" id="hint">Complete payment to start tracking.</div>
+        <div class="btns" style="margin-top:.8rem">
+          <button class="btn pri" id="confirmReceivedBtn" onclick="confirmReceived()" style="display:none">Medicine Received</button>
+        </div>
       </div>
 
       <div class="btns">
@@ -75,6 +78,7 @@
 
   <script>
     let map, userMarker, agentMarker, pollTimer;
+    let currentOrderIds = "";
 
     function loadUserLocation() {
       try {
@@ -123,6 +127,15 @@
         const data = await res.json();
         if (!data || !data.success) return;
         setStatus(data.status || "Assigned");
+        const confirmBtn = document.getElementById("confirmReceivedBtn");
+        if (data.status === "Delivered" && !data.receivedByUser) {
+          confirmBtn.style.display = "block";
+        } else {
+          confirmBtn.style.display = "none";
+        }
+        if (data.receivedByUser) {
+          document.getElementById("hint").textContent = "You confirmed medicine received. Pharmacy has been notified.";
+        }
 
         const pos = data.agent && data.agent.lat != null
           ? { lat: +data.agent.lat, lng: +data.agent.lng }
@@ -142,6 +155,23 @@
       } catch {}
     }
 
+    async function confirmReceived() {
+      if (!currentOrderIds) return;
+      try {
+        const res = await fetch('/api/tracking/confirm-received', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ orderIds: currentOrderIds })
+        });
+        const data = await res.json();
+        if (data && data.success) {
+          document.getElementById("confirmReceivedBtn").style.display = "none";
+          document.getElementById("hint").textContent = data.message || "Medicine received confirmed.";
+          await pollTracking(currentOrderIds);
+        }
+      } catch {}
+    }
+
     (function init() {
       document.getElementById("orderIds").textContent = localStorage.getItem("currentOrderIds") || "—";
       document.getElementById("deliveryAddress").textContent = localStorage.getItem("mf_delivery_address") || "—";
@@ -150,12 +180,12 @@
 
       initMap();
 
-      const orderIds = localStorage.getItem("currentOrderIds") || "";
-      if (orderIds) {
+      currentOrderIds = localStorage.getItem("currentOrderIds") || "";
+      if (currentOrderIds) {
         document.getElementById("hint").textContent = "Tracking is live.";
-        pollTracking(orderIds);
+        pollTracking(currentOrderIds);
         if (pollTimer) clearInterval(pollTimer);
-        pollTimer = setInterval(() => pollTracking(orderIds), 3000);
+        pollTimer = setInterval(() => pollTracking(currentOrderIds), 3000);
       } else {
         setStatus("Payment not confirmed");
       }

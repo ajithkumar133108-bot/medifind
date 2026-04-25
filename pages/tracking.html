@@ -21,6 +21,7 @@
     .btn{padding:.8rem;border-radius:10px;border:none;cursor:pointer;font-family:'Outfit',sans-serif;font-weight:700}
     .btn.pri{background:linear-gradient(135deg,#10b981,#059669);color:#fff}
     .btn.sec{background:transparent;border:1px solid rgba(255,255,255,.15);color:#cbd5e1}
+    .confirm-wrap{margin-top:.8rem}
   </style>
 </head>
 <body>
@@ -37,6 +38,9 @@
       <div class="lbl">Delivery Status</div>
       <div class="txt" id="statusText">Waiting for payment confirmation...</div>
     </div>
+    <div class="confirm-wrap">
+      <button class="btn pri" id="confirmReceivedBtn" onclick="confirmReceived()" style="display:none;width:100%">Medicine Received</button>
+    </div>
 
     <div class="meta" id="orderMeta"></div>
 
@@ -48,6 +52,7 @@
 
   <script>
     let pollTimer = null;
+    let currentOrderIds = "";
 
     async function pollTracking(orderIds) {
       try {
@@ -55,12 +60,39 @@
         const data = await res.json();
         if (!data || !data.success) return;
         document.getElementById("statusText").textContent = data.status || "Assigned";
+        const confirmBtn = document.getElementById("confirmReceivedBtn");
+        if (data.status === "Delivered" && !data.receivedByUser) {
+          confirmBtn.style.display = "block";
+        } else {
+          confirmBtn.style.display = "none";
+        }
+        if (data.receivedByUser) {
+          document.getElementById("orderMeta").textContent = `Order IDs: ${orderIds} | Medicine received confirmed. Pharmacy notified.`;
+        }
         if (data.status === "Delivered" && pollTimer) clearInterval(pollTimer);
+      } catch {}
+    }
+
+    async function confirmReceived() {
+      if (!currentOrderIds) return;
+      try {
+        const res = await fetch('/api/tracking/confirm-received', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ orderIds: currentOrderIds })
+        });
+        const data = await res.json();
+        if (data && data.success) {
+          document.getElementById("confirmReceivedBtn").style.display = "none";
+          document.getElementById("orderMeta").textContent = `Order IDs: ${currentOrderIds} | ${data.message}`;
+          await pollTracking(currentOrderIds);
+        }
       } catch {}
     }
 
     (function initTracking() {
       const orderIds = localStorage.getItem("currentOrderIds") || "N/A";
+      currentOrderIds = orderIds;
       const selectedPharmacy = JSON.parse(localStorage.getItem("selectedPharmacy") || "null");
       const pharmacyTxt = selectedPharmacy
         ? `${selectedPharmacy.name}${selectedPharmacy.address ? " - " + selectedPharmacy.address : ""}`
