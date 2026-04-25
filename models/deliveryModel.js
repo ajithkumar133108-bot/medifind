@@ -58,6 +58,26 @@ async function listAssignedDeliveries(deliveryPersonId) {
   );
 }
 
+async function claimUnassignedDispatchedOrders(deliveryPersonId, limit = 5) {
+  const rows = await db.query(
+    `SELECT o.id
+     FROM orders o
+     LEFT JOIN deliveries d ON d.order_id = o.id
+     WHERE o.status = 'DISPATCHED'
+       AND o.delivery_type = 'HOME_DELIVERY'
+       AND d.id IS NULL
+     ORDER BY o.order_date ASC
+     LIMIT ?`,
+    [Math.max(1, Number(limit) || 5)],
+  );
+
+  for (const row of rows) {
+    await assignDelivery(row.id, deliveryPersonId);
+  }
+
+  return rows.length;
+}
+
 async function updateDelivery(orderId, fields) {
   const { status, lat, lng } = fields;
   await db.query(
@@ -77,6 +97,7 @@ module.exports = {
   assignDelivery,
   getDeliveryByOrderId,
   listAssignedDeliveries,
+  claimUnassignedDispatchedOrders,
   updateDelivery,
 };
 

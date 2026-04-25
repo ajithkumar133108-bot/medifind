@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1.0" />
   <title>MediFind - Live Tracking</title>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAQj1ADl5hsR6eLlEWh2rYDIJcCkTI-x4k"></script>
   <style>
     *{box-sizing:border-box;margin:0;padding:0}
     body{font-family:'Outfit',sans-serif;background:#060d1a;color:#f8fafc;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:1rem}
@@ -22,6 +23,7 @@
     .btn.pri{background:linear-gradient(135deg,#10b981,#059669);color:#fff}
     .btn.sec{background:transparent;border:1px solid rgba(255,255,255,.15);color:#cbd5e1}
     .confirm-wrap{margin-top:.8rem}
+    #map{height:250px;border-radius:12px;border:1px solid rgba(255,255,255,.12);margin-top:1rem}
   </style>
 </head>
 <body>
@@ -43,6 +45,7 @@
     </div>
 
     <div class="meta" id="orderMeta"></div>
+    <div id="map"></div>
 
     <div class="actions">
       <button class="btn sec" onclick="window.location.href='user.html'">Dashboard</button>
@@ -53,6 +56,35 @@
   <script>
     let pollTimer = null;
     let currentOrderIds = "";
+    let map = null;
+    let agentMarker = null;
+
+    function initMap() {
+      if (map) return;
+      map = new google.maps.Map(document.getElementById("map"), {
+        zoom: 13,
+        center: { lat: 13.0827, lng: 80.2707 },
+        disableDefaultUI: true,
+        zoomControl: true
+      });
+    }
+
+    function updateAgentMarker(lat, lng) {
+      if (lat == null || lng == null) return;
+      initMap();
+      const pos = { lat: +lat, lng: +lng };
+      if (!agentMarker) {
+        agentMarker = new google.maps.Marker({
+          position: pos,
+          map,
+          title: "Delivery Agent",
+          icon: "https://maps.google.com/mapfiles/ms/icons/green-dot.png"
+        });
+      } else {
+        agentMarker.setPosition(pos);
+      }
+      map.setCenter(pos);
+    }
 
     async function pollTracking(orderIds) {
       try {
@@ -60,6 +92,9 @@
         const data = await res.json();
         if (!data || !data.success) return;
         document.getElementById("statusText").textContent = data.status || "Assigned";
+        if (data.agent && data.agent.lat != null && data.agent.lng != null) {
+          updateAgentMarker(data.agent.lat, data.agent.lng);
+        }
         const confirmBtn = document.getElementById("confirmReceivedBtn");
         if (data.status === "Delivered" && !data.receivedByUser) {
           confirmBtn.style.display = "block";
@@ -91,6 +126,7 @@
     }
 
     (function initTracking() {
+      initMap();
       const orderIds = localStorage.getItem("currentOrderIds") || "N/A";
       currentOrderIds = orderIds;
       const selectedPharmacy = JSON.parse(localStorage.getItem("selectedPharmacy") || "null");

@@ -23,7 +23,11 @@ async function myDeliveries(req, res) {
     return res.status(401).json({ error: 'Login required.' });
   }
   try {
-    const rows = await deliveryModel.listAssignedDeliveries(req.user.id);
+    let rows = await deliveryModel.listAssignedDeliveries(req.user.id);
+    if (!rows.length) {
+      await deliveryModel.claimUnassignedDispatchedOrders(req.user.id, 5);
+      rows = await deliveryModel.listAssignedDeliveries(req.user.id);
+    }
     return res.json({ success: true, deliveries: rows });
   } catch (e) {
     return res.status(500).json({ error: e.message });

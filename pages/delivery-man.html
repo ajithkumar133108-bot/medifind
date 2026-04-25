@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1.0" />
   <title>MediFind – Delivery Man</title>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAQj1ADl5hsR6eLlEWh2rYDIJcCkTI-x4k"></script>
   <style>
     *{box-sizing:border-box;margin:0;padding:0}
     body{font-family:'Outfit',sans-serif;background:#060d1a;color:#f8fafc;min-height:100vh;padding:1rem;display:flex;align-items:center;justify-content:center}
@@ -26,6 +27,7 @@
     .mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.82rem;color:#cbd5e1;white-space:pre-wrap;word-break:break-word}
     .tag{display:inline-flex;align-items:center;gap:.4rem;padding:.25rem .65rem;border-radius:999px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.04);color:#e2e8f0;font-size:.78rem;font-weight:700}
     .ok{border-color:rgba(16,185,129,.28);background:rgba(16,185,129,.10);color:#6ee7b7}
+    #map{height:270px;border-radius:12px;overflow:hidden;border:1px solid rgba(255,255,255,.1);margin-top:.8rem}
     @media (max-width: 900px){.wrap{grid-template-columns:1fr}}
   </style>
 </head>
@@ -93,9 +95,10 @@
 
     <div class="card">
       <div class="title">📡 Live Output</div>
-      <div class="sub">Last sent coordinates + server response.</div>
+      <div class="sub">Last sent coordinates + live map tracking.</div>
       <div class="box">
         <div class="mono" id="log">—</div>
+        <div id="map"></div>
       </div>
     </div>
   </div>
@@ -103,6 +106,55 @@
   <script>
     let watchId = null;
     let lastPos = null;
+    let map = null;
+    let agentMarker = null;
+    let userMarker = null;
+    let selectedDelivery = null;
+    let deliveriesByOrderId = {};
+
+    function initMap() {
+      if (!map) {
+        map = new google.maps.Map(document.getElementById("map"), {
+          zoom: 13,
+          center: { lat: 13.0827, lng: 80.2707 },
+          disableDefaultUI: true,
+          zoomControl: true,
+        });
+      }
+    }
+
+    function updateMapAgent(lat, lng) {
+      if (lat == null || lng == null) return;
+      initMap();
+      const pos = { lat: +lat, lng: +lng };
+      if (!agentMarker) {
+        agentMarker = new google.maps.Marker({
+          position: pos,
+          map,
+          title: "Delivery Agent",
+          icon: "https://maps.google.com/mapfiles/ms/icons/green-dot.png",
+        });
+      } else {
+        agentMarker.setPosition(pos);
+      }
+      map.setCenter(pos);
+    }
+
+    function updateMapUser(lat, lng) {
+      if (lat == null || lng == null) return;
+      initMap();
+      const pos = { lat: +lat, lng: +lng };
+      if (!userMarker) {
+        userMarker = new google.maps.Marker({
+          position: pos,
+          map,
+          title: "Customer Location",
+          icon: "https://maps.google.com/mapfiles/ms/icons/red-dot.png",
+        });
+      } else {
+        userMarker.setPosition(pos);
+      }
+    }
 
     function setLog(obj) {
       document.getElementById("log").textContent =
@@ -150,6 +202,10 @@
       try {
         const data = await api("/api/delivery/my");
         const deliveries = data.deliveries || [];
+        deliveriesByOrderId = {};
+        deliveries.forEach((d) => {
+          deliveriesByOrderId[String(d.order_id)] = d;
+        });
         if (!deliveries.length) {
           sel.innerHTML = `<option value="">No assigned deliveries yet</option>`;
           return;
@@ -166,7 +222,14 @@
     async function onPickSession() {
       const sel = document.getElementById("sessionSelect");
       const val = sel.value || "";
-      if (val) document.getElementById("orderIds").value = val;
+      if (val) {
+        document.getElementById("orderIds").value = val;
+        selectedDelivery = deliveriesByOrderId[String(val)] || null;
+        if (selectedDelivery) {
+          updateMapUser(selectedDelivery.user_latitude, selectedDelivery.user_longitude);
+          updateMapAgent(selectedDelivery.current_latitude, selectedDelivery.current_longitude);
+        }
+      }
     }
 
     function getOrderIds() {
@@ -191,6 +254,7 @@
       try {
         const data = await api("/api/delivery/update", payload);
         setLog({ sent: payload, response: data });
+        updateMapAgent(lat, lng);
       } catch (e) {
         setLog({ sent: payload, error: e.message });
       }
@@ -238,6 +302,7 @@
     }
 
     // Try load, will show login required if not logged in.
+    initMap();
     loadSessions();
   </script>
 </body>
