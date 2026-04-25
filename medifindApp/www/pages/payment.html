@@ -27,7 +27,7 @@
     .amount-val span{color:#10b981;}
 
     /* Payment methods */
-    .methods{display:grid;grid-template-columns:1fr 1fr;gap:.6rem;margin-bottom:1.5rem;}
+    .methods{display:grid;grid-template-columns:1fr 1fr 1fr;gap:.6rem;margin-bottom:1.5rem;}
     .method{background:rgba(255,255,255,.04);border:1.5px solid rgba(255,255,255,.09);border-radius:12px;padding:.9rem;text-align:center;cursor:pointer;transition:.15s;}
     .method:hover{border-color:rgba(16,185,129,.4);background:rgba(16,185,129,.06);}
     .method.on{border-color:#10b981;background:rgba(16,185,129,.1);}
@@ -124,6 +124,10 @@
       <div class="method-ico">📱</div>
       <div class="method-lbl">UPI</div>
     </div>
+    <div class="method" id="m-cod" onclick="setMethod('cod')">
+      <div class="method-ico">💵</div>
+      <div class="method-lbl">COD</div>
+    </div>
   </div>
 
   <!-- Card Form -->
@@ -155,6 +159,10 @@
       <label>UPI ID</label>
       <input id="upiId" placeholder="yourname@upi" />
     </div>
+  </div>
+
+  <div class="form-sec" id="form-cod">
+    <div class="upi-hint">💵 Pay by cash when medicine is delivered.</div>
   </div>
 
   <button class="pay-btn" id="payBtn" onclick="processPayment()">
@@ -189,6 +197,10 @@
     document.getElementById('m-' + m).classList.add('on');
     document.querySelectorAll('.form-sec').forEach(el => el.classList.remove('show'));
     document.getElementById('form-' + m).classList.add('show');
+    const payBtn = document.getElementById('payBtn');
+    payBtn.innerHTML = m === 'cod'
+      ? '🧾 Place Order (COD)'
+      : `🔒 Pay ₹<span id="payBtnAmt">${fmt(amount)}</span>`;
   }
 
   // ── Input formatters ──────────────────────────────────────
@@ -245,7 +257,7 @@
       if (!document.getElementById('cardName').value.trim()) { shake('cardName'); return; }
       if (!document.getElementById('expiry').value.trim()) { shake('expiry'); return; }
       if (!document.getElementById('cvv').value.trim()) { shake('cvv'); return; }
-    } else {
+    } else if (method === 'upi') {
       const upi = document.getElementById('upiId').value.trim();
       if (!upi.includes('@')) { shake('upiId'); return; }
     }
@@ -257,26 +269,26 @@
     let paymentSuccess = false;
 
     try {
-      // Step 1: Create demo order
-      const orderRes = await fetchWithTimeout(apiUrl('/create-order'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount })
-      });
-      if (!orderRes.ok) throw new Error('Unable to create payment order.');
-      const order = await orderRes.json();
+      let order = { id: 'cod_order_' + Date.now() };
+      if (method !== 'cod') {
+        const orderRes = await fetchWithTimeout(apiUrl('/create-order'), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ amount })
+        });
+        if (!orderRes.ok) throw new Error('Unable to create payment order.');
+        order = await orderRes.json();
+      }
 
-      // Step 2: Simulate 2.5s processing delay
-      await delay(2500);
+      await delay(method === 'cod' ? 800 : 2500);
 
-      // Step 3: Verify (confirm orders in DB)
       const verifyRes = await fetchWithTimeout(apiUrl('/api/payment/verify'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           razorpay_order_id: order.id,
-          razorpay_payment_id: 'demo_pay_' + Date.now(),
-          razorpay_signature: 'demo_sig',
+          razorpay_payment_id: method === 'cod' ? 'cod_pay_' + Date.now() : 'demo_pay_' + Date.now(),
+          razorpay_signature: method === 'cod' ? 'cod_sig' : 'demo_sig',
           orderIds: sessionStorage.getItem('paymentOrderIds')
         })
       });
@@ -284,7 +296,9 @@
       const result = await verifyRes.json();
 
       if (result.success) {
-        const txnId = 'TXN#DEMO' + Math.floor(Math.random()*9000000+1000000);
+        const txnId = method === 'cod'
+          ? 'COD#' + Math.floor(Math.random()*9000000+1000000)
+          : 'TXN#DEMO' + Math.floor(Math.random()*9000000+1000000);
         document.getElementById('txnId').textContent = txnId;
         sessionStorage.removeItem('paymentAmount');
         sessionStorage.removeItem('paymentOrderIds');

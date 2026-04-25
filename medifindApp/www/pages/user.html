@@ -1011,6 +1011,7 @@
         const type = document.getElementById("bType").value;
         const addr = document.getElementById("bAddr").value.trim();
         if (!type) {
+          alert("Please choose Pickup or Delivery before continuing.");
           alert_("Please select Pickup or Home Delivery.", "err");
           return;
         }
@@ -1050,6 +1051,7 @@
           return;
         }
         if (!type) {
+          alert("Please choose Pickup or Delivery before continuing.");
           alert_("Please select Pickup or Home Delivery.", "err");
           return;
         }
