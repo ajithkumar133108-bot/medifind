@@ -13,6 +13,14 @@ async function getDeliveryPersonById(id) {
   return rows[0] || null;
 }
 
+async function createDeliveryPerson(data) {
+  const result = await db.query(
+    'INSERT INTO delivery_persons (full_name, email, password, phone, is_active) VALUES (?, ?, ?, ?, ?)',
+    [data.full_name, data.email, data.password, data.phone || '', data.is_active == null ? 1 : data.is_active],
+  );
+  return result.insertId;
+}
+
 async function assignDelivery(orderId, deliveryPersonId) {
   await db.query(
     `INSERT INTO deliveries (order_id, delivery_person_id, status)
@@ -65,6 +73,7 @@ async function updateDelivery(orderId, fields) {
 module.exports = {
   findDeliveryPersonByEmail,
   getDeliveryPersonById,
+  createDeliveryPerson,
   assignDelivery,
   getDeliveryByOrderId,
   listAssignedDeliveries,

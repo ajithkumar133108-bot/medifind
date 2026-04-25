@@ -12,7 +12,7 @@ body{font-family:'Outfit',sans-serif;background:#060d1a;min-height:100vh;display
 .logo{text-align:center;margin-bottom:2rem;}
 .logo h2{font-family:'Playfair Display',serif;color:#f8fafc;font-size:1.4rem;margin-top:.4rem;}
 .logo p{color:#64748b;font-size:.82rem;}
-.tabs{display:grid;grid-template-columns:1fr 1fr;gap:3px;background:rgba(0,0,0,.3);border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:3px;margin-bottom:1.8rem;}
+.tabs{display:grid;grid-template-columns:1fr 1fr 1fr;gap:3px;background:rgba(0,0,0,.3);border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:3px;margin-bottom:1.8rem;}
 .tab{padding:.6rem;border:none;background:transparent;color:#64748b;font-family:'Outfit',sans-serif;font-size:.86rem;font-weight:600;border-radius:8px;cursor:pointer;transition:.15s;}
 .tab:hover{color:#cbd5e1;}
 .tab.on{background:#10b981;color:#fff;}
@@ -50,6 +50,7 @@ body{font-family:'Outfit',sans-serif;background:#060d1a;min-height:100vh;display
   <div class="tabs">
     <button type="button" class="tab on" id="t1" onclick="sw('user')">👤 Patient / User</button>
     <button type="button" class="tab"    id="t2" onclick="sw('pharma')">🏪 Pharmacy Owner</button>
+    <button type="button" class="tab"    id="t3" onclick="sw('delivery')">🚚 Delivery Agent</button>
   </div>
 
   <!-- USER FORM -->
@@ -98,6 +99,20 @@ body{font-family:'Outfit',sans-serif;background:#060d1a;min-height:100vh;display
     <button type="button" class="btn-reg" id="pBtn" onclick="regPharma()">Register Pharmacy →</button>
   </div>
 
+  <!-- DELIVERY FORM -->
+  <div id="deliveryF" style="display:none;">
+    <div class="row">
+      <div class="f"><label>Full Name *</label><input id="d_name" placeholder="Delivery agent name"/></div>
+      <div class="f"><label>Phone</label><input id="d_phone" placeholder="Mobile number"/></div>
+    </div>
+    <div class="f"><label>Email Address *</label><input type="email" id="d_email" placeholder="delivery@email.com"/></div>
+    <div class="row">
+      <div class="f"><label>Password *</label><input type="password" id="d_pass" placeholder="Min 6 characters"/></div>
+      <div class="f"><label>Confirm Password *</label><input type="password" id="d_pass2" placeholder="Repeat password"/></div>
+    </div>
+    <button type="button" class="btn-reg" id="dBtn" onclick="regDelivery()">Register Delivery Agent →</button>
+  </div>
+
   <div class="footer">Already have an account? <a href="../index.html">Sign in here</a></div>
 </div>
 
@@ -109,8 +124,10 @@ function sw(t) {
   tab = t;
   document.getElementById('t1').classList.toggle('on', t==='user');
   document.getElementById('t2').classList.toggle('on', t==='pharma');
+  document.getElementById('t3').classList.toggle('on', t==='delivery');
   document.getElementById('userF').style.display   = t==='user'   ? 'block':'none';
   document.getElementById('pharmaF').style.display = t==='pharma' ? 'block':'none';
+  document.getElementById('deliveryF').style.display = t==='delivery' ? 'block':'none';
   document.getElementById('msg').className = 'msg';
 }
 
@@ -213,8 +230,43 @@ async function regPharma() {
   }
 }
 
+async function regDelivery() {
+  const name=v('d_name'), email=v('d_email'), pass=v('d_pass'), pass2=v('d_pass2');
+  if (!validateRequired(name, 'Full name')) return;
+  if (!validateRequired(email, 'Email')) return;
+  if (!validateEmail(email)) { showMsg('Please enter a valid email address.', 'err'); return; }
+  if (!validatePassword(pass)) { showMsg('Password must be at least 6 characters.', 'err'); return; }
+  if (pass !== pass2) { showMsg('Passwords do not match.', 'err'); return; }
+
+  setLoading('dBtn', true);
+
+  try {
+    const res  = await fetch('/api/register/delivery', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        fullName: name,
+        email,
+        password: pass,
+        phone: v('d_phone')
+      })
+    });
+    const data = await res.json();
+    if (data.success) {
+      showMsg('✅ Delivery account registered! Redirecting…','ok');
+      setTimeout(() => window.location.href = '../index.html?msg=Delivery+registered!+Please+login.', 1800);
+    } else {
+      showMsg(data.error||'Registration failed.','err');
+      setLoading('dBtn', false);
+    }
+  } catch(e) {
+    showMsg('Cannot reach server. Run: node server.js','err');
+    setLoading('dBtn', false);
+  }
+}
+
 const p = new URLSearchParams(window.location.search);
 if (p.get('role')==='pharmacy') sw('pharma');
+if (p.get('role')==='delivery') sw('delivery');
 </script>
 </body>
 </html>

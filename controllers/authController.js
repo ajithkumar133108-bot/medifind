@@ -177,4 +177,39 @@ async function registerPharmacy(req, res) {
   }
 }
 
-module.exports = { me, logout, login, registerUser, registerPharmacy };
+async function registerDelivery(req, res) {
+  const { fullName, email, password, phone } = req.body;
+  const sanitizedFullName = validator.escape((fullName || '').trim());
+  const sanitizedEmail = validator.escape((email || '').trim());
+  const sanitizedPhone = phone ? validator.escape(phone.trim()) : '';
+
+  if (!sanitizedFullName || !sanitizedEmail || !password) {
+    return res.status(400).json({ error: 'Name, email and password required.' });
+  }
+
+  if (!validator.isEmail(sanitizedEmail)) {
+    return res.status(400).json({ error: 'Invalid email format.' });
+  }
+
+  if (password.length < 6) {
+    return res.status(400).json({ error: 'Password must be at least 6 characters.' });
+  }
+
+  try {
+    const existing = await deliveryModel.findDeliveryPersonByEmail(sanitizedEmail);
+    if (existing) return res.status(409).json({ error: 'Email already registered.' });
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const deliveryId = await deliveryModel.createDeliveryPerson({
+      full_name: sanitizedFullName,
+      email: sanitizedEmail,
+      password: hashedPassword,
+      phone: sanitizedPhone,
+      is_active: 1,
+    });
+    return res.json({ success: true, id: deliveryId });
+  } catch (error) {
+    return res.status(500).json({ error: error.message });
+  }
+}
+
+module.exports = { me, logout, login, registerUser, registerPharmacy, registerDelivery };
