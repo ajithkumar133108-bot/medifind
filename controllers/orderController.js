@@ -22,6 +22,15 @@ async function checkoutCart(req, res) {
         failed.push({ id: item.medicineId, reason: 'Medicine not found' });
         continue;
       }
+      const deliveryType = String(item.deliveryType || '').trim().toUpperCase();
+      if (!['PICKUP', 'HOME_DELIVERY'].includes(deliveryType)) {
+        failed.push({ id: item.medicineId, name: medicine.medicine_name, reason: 'Please select Pickup or Home Delivery.' });
+        continue;
+      }
+      if (deliveryType === 'HOME_DELIVERY' && !String(item.deliveryAddress || '').trim()) {
+        failed.push({ id: item.medicineId, name: medicine.medicine_name, reason: 'Delivery address is required for Home Delivery.' });
+        continue;
+      }
       const quantity = parseInt(item.quantity, 10) || 1;
       if (medicine.stock_quantity < quantity) {
         failed.push({ id: item.medicineId, name: medicine.medicine_name, reason: 'Insufficient stock' });
@@ -32,8 +41,8 @@ async function checkoutCart(req, res) {
         user_id: req.user.id,
         pharmacy_id: medicine.pharmacy_id,
         total_price: total,
-        delivery_type: item.deliveryType || 'PICKUP',
-        delivery_address: item.deliveryAddress || '',
+        delivery_type: deliveryType,
+        delivery_address: deliveryType === 'HOME_DELIVERY' ? String(item.deliveryAddress || '').trim() : '',
         status: 'PENDING',
       });
       await orderModel.createOrderItem({
