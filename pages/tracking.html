@@ -24,6 +24,7 @@
     .btn.sec{background:transparent;border:1px solid rgba(255,255,255,.15);color:#cbd5e1}
     .confirm-wrap{margin-top:.8rem}
     #map{height:250px;border-radius:12px;border:1px solid rgba(255,255,255,.12);margin-top:1rem}
+    .route-meta{margin-top:.55rem;color:#94a3b8;font-size:.82rem}
   </style>
 </head>
 <body>
@@ -45,6 +46,7 @@
     </div>
 
     <div class="meta" id="orderMeta"></div>
+    <div class="route-meta" id="routeMeta">ETA will appear once delivery starts.</div>
     <div id="map"></div>
 
     <div class="actions">
@@ -58,6 +60,10 @@
     let currentOrderIds = "";
     let map = null;
     let agentMarker = null;
+    let userMarker = null;
+    let directionsService = null;
+    let directionsRenderer = null;
+    let lastRouteUpdate = 0;
 
     function initMap() {
       if (map) return;
@@ -67,6 +73,12 @@
         disableDefaultUI: true,
         zoomControl: true
       });
+      directionsService = new google.maps.DirectionsService();
+      directionsRenderer = new google.maps.DirectionsRenderer({
+        suppressMarkers: true,
+        polylineOptions: { strokeColor: "#22c55e", strokeWeight: 5 }
+      });
+      directionsRenderer.setMap(map);
     }
 
     function updateAgentMarker(lat, lng) {
@@ -86,23 +98,68 @@
       map.setCenter(pos);
     }
 
+    function loadUserLocation() {
+      try {
+        const loc = JSON.parse(localStorage.getItem("mf_user_location") || "null");
+        if (!loc || loc.lat == null || loc.lng == null) return null;
+        return { lat: +loc.lat, lng: +loc.lng };
+      } catch {
+        return null;
+      }
+    }
+
+    function updateUserMarker(pos) {
+      if (!pos) return;
+      initMap();
+      if (!userMarker) {
+        userMarker = new google.maps.Marker({
+          position: pos,
+          map,
+          title: "Your location",
+          icon: "https://maps.google.com/mapfiles/ms/icons/red-dot.png"
+        });
+      } else {
+        userMarker.setPosition(pos);
+      }
+    }
+
+    function updateRouteAndEta(agentPos, userPos) {
+      if (!agentPos || !userPos || !directionsService || !directionsRenderer) return;
+      const now = Date.now();
+      if (now - lastRouteUpdate < 12000) return;
+      lastRouteUpdate = now;
+      directionsService.route({
+        origin: agentPos,
+        destination: userPos,
+        travelMode: google.maps.TravelMode.DRIVING,
+      }, (result, status) => {
+        if (status !== "OK" || !result?.routes?.length) return;
+        directionsRenderer.setDirections(result);
+        const leg = result.routes[0].legs[0];
+        const meta = document.getElementById("routeMeta");
+        meta.textContent = `Distance: ${leg.distance.text} | ETA: ${leg.duration.text}`;
+      });
+    }
+
     async function pollTracking(orderIds) {
       try {
-        const res = await fetch(`/api/tracking?orderIds=${encodeURIComponent(orderIds)}`);
+        const primaryOrderId = String(orderIds).split(",")[0].trim();
+        const res = await fetch(`/track/${encodeURIComponent(primaryOrderId)}`);
         const data = await res.json();
         if (!data || !data.success) return;
         document.getElementById("statusText").textContent = data.status || "Assigned";
-        if (data.agent && data.agent.lat != null && data.agent.lng != null) {
-          updateAgentMarker(data.agent.lat, data.agent.lng);
+        if (data.lat != null && data.lng != null) {
+          const agentPos = { lat: +data.lat, lng: +data.lng };
+          updateAgentMarker(agentPos.lat, agentPos.lng);
+          const userPos = loadUserLocation();
+          updateUserMarker(userPos);
+          updateRouteAndEta(agentPos, userPos);
         }
         const confirmBtn = document.getElementById("confirmReceivedBtn");
-        if (data.status === "Delivered" && !data.receivedByUser) {
+        if (data.status === "Delivered") {
           confirmBtn.style.display = "block";
         } else {
           confirmBtn.style.display = "none";
-        }
-        if (data.receivedByUser) {
-          document.getElementById("orderMeta").textContent = `Order IDs: ${orderIds} | Medicine received confirmed. Pharmacy notified.`;
         }
         if (data.status === "Delivered" && pollTimer) clearInterval(pollTimer);
       } catch {}

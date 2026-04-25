@@ -269,6 +269,53 @@ app.get('/api/tracking', async (req, res) => {
   return res.json({ success: true, ...tracking, agent: tracking.agent || deliveryLocation });
 });
 
+// Alias endpoint for simpler order-based polling from tracking UIs.
+app.get('/track/:orderId', async (req, res) => {
+  const orderId = parseInt(req.params.orderId, 10);
+  if (Number.isNaN(orderId)) {
+    return res.status(400).json({ success: false, message: 'Invalid orderId' });
+  }
+  try {
+    const deliveryModel = require('./models/deliveryModel');
+    const d = await deliveryModel.getDeliveryByOrderId(orderId);
+    if (d) {
+      const statusMap = {
+        ASSIGNED: 'Assigned',
+        ACCEPTED: 'Assigned',
+        PICKED: 'Picked',
+        ON_THE_WAY: 'On the way',
+        DELIVERED: 'Delivered',
+      };
+      return res.json({
+        success: true,
+        orderId,
+        status: statusMap[d.status] || 'Assigned',
+        lat: d.current_latitude != null ? Number(d.current_latitude) : null,
+        lng: d.current_longitude != null ? Number(d.current_longitude) : null,
+      });
+    }
+  } catch {}
+
+  const key = Array.from(trackingSessions.keys()).find((k) => String(k).split(',').map((x) => parseInt(x.trim(), 10)).includes(orderId));
+  if (!key) {
+    return res.json({
+      success: true,
+      orderId,
+      status: 'Assigned',
+      lat: deliveryLocation.lat,
+      lng: deliveryLocation.lng,
+    });
+  }
+  const t = computeTracking(trackingSessions.get(key));
+  return res.json({
+    success: true,
+    orderId,
+    status: t.status || 'Assigned',
+    lat: t.agent?.lat ?? deliveryLocation.lat,
+    lng: t.agent?.lng ?? deliveryLocation.lng,
+  });
+});
+
 app.get('/api/tracking/sessions', (req, res) => {
   const sessions = Array.from(trackingSessions.values()).map((s) => {
     const t = computeTracking(s);
@@ -347,6 +394,26 @@ app.post('/api/tracking/confirm-received', async (req, res) => {
     success: true,
     message: 'Medicine received confirmed. Pharmacy has been notified.',
   });
+});
+
+// Mark an order complete from delivery/admin side.
+app.post('/complete-order', async (req, res) => {
+  if (!req.user || !['DELIVERY', 'ADMIN'].includes(req.user.role)) {
+    return res.status(401).json({ success: false, message: 'Login required.' });
+  }
+  const { orderId } = req.body || {};
+  const id = parseInt(orderId, 10);
+  if (Number.isNaN(id)) {
+    return res.status(400).json({ success: false, message: 'orderId is required' });
+  }
+  try {
+    const deliveryModel = require('./models/deliveryModel');
+    await deliveryModel.updateDelivery(id, { status: 'DELIVERED' });
+    await orderModel.updateOrderStatus(id, 'DELIVERED');
+    return res.json({ success: true, status: 'Delivered' });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
 });
 app.use((req, res) => res.status(404).send('Not found'));
 
