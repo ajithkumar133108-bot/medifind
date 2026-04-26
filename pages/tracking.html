@@ -9,7 +9,7 @@
   <style>
     *{box-sizing:border-box;margin:0;padding:0}
     body{font-family:'Outfit',sans-serif;background:#060d1a;color:#f8fafc;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:1rem}
-    .card{width:100%;max-width:460px;background:linear-gradient(145deg,#0f1e35,#0a1628);border:1px solid rgba(255,255,255,.08);border-radius:20px;padding:1.4rem}
+    .card{width:100%;max-width:860px;background:linear-gradient(145deg,#0f1e35,#0a1628);border:1px solid rgba(255,255,255,.08);border-radius:20px;padding:1.2rem;box-shadow:0 20px 55px rgba(0,0,0,.55)}
     .title{font-size:1.3rem;font-weight:800;margin-bottom:.3rem}
     .sub{color:#94a3b8;font-size:.9rem;margin-bottom:1rem}
     .pharmacy{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:.8rem;margin-bottom:1rem}
@@ -23,8 +23,23 @@
     .btn.pri{background:linear-gradient(135deg,#10b981,#059669);color:#fff}
     .btn.sec{background:transparent;border:1px solid rgba(255,255,255,.15);color:#cbd5e1}
     .confirm-wrap{margin-top:.8rem}
-    #map{height:250px;border-radius:12px;border:1px solid rgba(255,255,255,.12);margin-top:1rem}
-    .route-meta{margin-top:.55rem;color:#94a3b8;font-size:.82rem}
+    .layout{display:grid;grid-template-columns:360px 1fr;gap:1rem;align-items:start}
+    .panel{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:.9rem}
+    .legend{display:flex;gap:.6rem;align-items:center;flex-wrap:wrap;margin-top:.6rem}
+    .dot{width:10px;height:10px;border-radius:50%}
+    .dot.agent{background:#22c55e}
+    .dot.user{background:#ef4444}
+    .kv{display:flex;justify-content:space-between;gap:.8rem;margin-top:.4rem;color:#cbd5e1;font-size:.86rem}
+    .kv span{color:#94a3b8}
+    #map{height:520px;border-radius:18px;border:1px solid rgba(255,255,255,.12);overflow:hidden}
+    .route-meta{margin-top:.55rem;color:#94a3b8;font-size:.82rem;min-height:1.1em}
+    .toggle{display:flex;align-items:center;gap:.55rem;margin-top:.6rem;color:#cbd5e1;font-size:.86rem}
+    .toggle input{width:16px;height:16px}
+    @media (max-width: 900px){
+      .card{max-width:460px}
+      .layout{grid-template-columns:1fr}
+      #map{height:360px}
+    }
   </style>
 </head>
 <body>
@@ -32,26 +47,41 @@
     <div class="title">MediFind 🏥 Live Tracking</div>
     <div class="sub">Track your medicine order in real time.</div>
 
-    <div class="pharmacy" id="pharmacyBox">
-      <b>Selected Pharmacy</b>
-      <span id="pharmacyTxt">Not available</span>
-    </div>
+    <div class="layout">
+      <div>
+        <div class="panel">
+          <div class="lbl">Selected Pharmacy</div>
+          <div class="val" id="pharmacyTxt" style="margin-top:.25rem">Not available</div>
+          <div class="meta" id="orderMeta" style="margin-top:.55rem"></div>
+          <div class="legend">
+            <span class="tag"><span class="dot agent"></span> Agent</span>
+            <span class="tag"><span class="dot user"></span> You</span>
+          </div>
+          <div class="toggle">
+            <input id="followToggle" type="checkbox" checked />
+            <label for="followToggle" style="margin:0;font-size:.86rem;color:#cbd5e1">Follow agent</label>
+          </div>
+          <div class="kv"><span>Last update</span><b id="lastUpdate">—</b></div>
+          <div class="kv"><span>Distance (est.)</span><b id="distanceTxt">—</b></div>
+        </div>
 
-    <div class="status">
-      <div class="lbl">Delivery Status</div>
-      <div class="txt" id="statusText">Waiting for payment confirmation...</div>
-    </div>
-    <div class="confirm-wrap">
-      <button class="btn pri" id="confirmReceivedBtn" onclick="confirmReceived()" style="display:none;width:100%">Medicine Received</button>
-    </div>
+        <div class="panel" style="margin-top:1rem">
+          <div class="lbl">Delivery Status</div>
+          <div class="txt" id="statusText" style="margin-top:.35rem">Waiting for payment confirmation...</div>
+          <div class="route-meta" id="routeMeta">Route will appear once delivery starts.</div>
+          <div class="confirm-wrap">
+            <button class="btn pri" id="confirmReceivedBtn" onclick="confirmReceived()" style="display:none;width:100%;margin-top:.6rem">Medicine Received</button>
+          </div>
+          <div class="actions" style="margin-top:.8rem">
+            <button class="btn sec" onclick="window.location.href='user.html'">Dashboard</button>
+            <button class="btn pri" onclick="window.location.href='success.html'">Order Summary</button>
+          </div>
+        </div>
+      </div>
 
-    <div class="meta" id="orderMeta"></div>
-    <div class="route-meta" id="routeMeta">ETA will appear once delivery starts.</div>
-    <div id="map"></div>
-
-    <div class="actions">
-      <button class="btn sec" onclick="window.location.href='user.html'">Dashboard</button>
-      <button class="btn pri" onclick="window.location.href='success.html'">Order Summary</button>
+      <div class="panel" style="padding:.6rem">
+        <div id="map"></div>
+      </div>
     </div>
   </div>
 
@@ -61,9 +91,9 @@
     let map = null;
     let agentMarker = null;
     let userMarker = null;
-    let directionsService = null;
-    let directionsRenderer = null;
-    let lastRouteUpdate = 0;
+    let routeLine = null;
+    let lastAgentPos = null;
+    let lastUiUpdateAt = 0;
 
     function initMap() {
       if (map) return;
@@ -73,12 +103,42 @@
         disableDefaultUI: true,
         zoomControl: true
       });
-      directionsService = new google.maps.DirectionsService();
-      directionsRenderer = new google.maps.DirectionsRenderer({
-        suppressMarkers: true,
-        polylineOptions: { strokeColor: "#22c55e", strokeWeight: 5 }
-      });
-      directionsRenderer.setMap(map);
+    }
+
+    function haversineKm(a, b) {
+      if (!a || !b) return null;
+      const R = 6371;
+      const dLat = (b.lat - a.lat) * Math.PI / 180;
+      const dLng = (b.lng - a.lng) * Math.PI / 180;
+      const lat1 = a.lat * Math.PI / 180;
+      const lat2 = b.lat * Math.PI / 180;
+      const s1 = Math.sin(dLat / 2);
+      const s2 = Math.sin(dLng / 2);
+      const h = s1 * s1 + Math.cos(lat1) * Math.cos(lat2) * s2 * s2;
+      return 2 * R * Math.asin(Math.min(1, Math.sqrt(h)));
+    }
+
+    function setLastUpdate(ts) {
+      const el = document.getElementById("lastUpdate");
+      if (!el) return;
+      if (!ts) { el.textContent = "—"; return; }
+      const sec = Math.max(0, Math.round((Date.now() - ts) / 1000));
+      el.textContent = sec <= 1 ? "now" : `${sec}s ago`;
+    }
+
+    function isFollowOn() {
+      const cb = document.getElementById("followToggle");
+      return cb ? !!cb.checked : true;
+    }
+
+    function ensureInView(pos) {
+      if (!map || !pos) return;
+      if (!isFollowOn()) return;
+      const bounds = map.getBounds();
+      if (!bounds) { map.setCenter(pos); return; }
+      if (!bounds.contains(new google.maps.LatLng(pos.lat, pos.lng))) {
+        map.panTo(pos);
+      }
     }
 
     function updateAgentMarker(lat, lng) {
@@ -95,7 +155,7 @@
       } else {
         agentMarker.setPosition(pos);
       }
-      map.setCenter(pos);
+      ensureInView(pos);
     }
 
     function loadUserLocation() {
@@ -123,22 +183,43 @@
       }
     }
 
-    function updateRouteAndEta(agentPos, userPos) {
-      if (!agentPos || !userPos || !directionsService || !directionsRenderer) return;
-      const now = Date.now();
-      if (now - lastRouteUpdate < 12000) return;
-      lastRouteUpdate = now;
-      directionsService.route({
-        origin: agentPos,
-        destination: userPos,
-        travelMode: google.maps.TravelMode.DRIVING,
-      }, (result, status) => {
-        if (status !== "OK" || !result?.routes?.length) return;
-        directionsRenderer.setDirections(result);
-        const leg = result.routes[0].legs[0];
-        const meta = document.getElementById("routeMeta");
-        meta.textContent = `Distance: ${leg.distance.text} | ETA: ${leg.duration.text}`;
-      });
+    function updateRouteLine(agentPos, userPos) {
+      if (!agentPos || !userPos) return;
+      initMap();
+      const path = [agentPos, userPos];
+      if (!routeLine) {
+        routeLine = new google.maps.Polyline({
+          path,
+          geodesic: true,
+          strokeColor: "#22c55e",
+          strokeOpacity: 0.9,
+          strokeWeight: 4,
+          map
+        });
+      } else {
+        routeLine.setPath(path);
+      }
+
+      const km = haversineKm(agentPos, userPos);
+      const distanceTxt = document.getElementById("distanceTxt");
+      if (distanceTxt) {
+        distanceTxt.textContent = km == null ? "—" : (km < 1 ? `${Math.round(km * 1000)} m` : `${km.toFixed(2)} km`);
+      }
+      const meta = document.getElementById("routeMeta");
+      if (meta) meta.textContent = km == null ? "Route unavailable." : "Route: straight-line estimate (no navigation).";
+    }
+
+    function animateMarkerTo(marker, fromPos, toPos, durationMs = 450) {
+      if (!marker || !fromPos || !toPos) return;
+      const start = performance.now();
+      function step(now) {
+        const t = Math.min(1, (now - start) / durationMs);
+        const lat = fromPos.lat + (toPos.lat - fromPos.lat) * t;
+        const lng = fromPos.lng + (toPos.lng - fromPos.lng) * t;
+        marker.setPosition({ lat, lng });
+        if (t < 1) requestAnimationFrame(step);
+      }
+      requestAnimationFrame(step);
     }
 
     async function pollTracking(orderIds) {
@@ -150,10 +231,21 @@
         document.getElementById("statusText").textContent = data.status || "Assigned";
         if (data.lat != null && data.lng != null) {
           const agentPos = { lat: +data.lat, lng: +data.lng };
-          updateAgentMarker(agentPos.lat, agentPos.lng);
           const userPos = loadUserLocation();
           updateUserMarker(userPos);
-          updateRouteAndEta(agentPos, userPos);
+          initMap();
+          if (!agentMarker) {
+            updateAgentMarker(agentPos.lat, agentPos.lng);
+          } else if (lastAgentPos) {
+            animateMarkerTo(agentMarker, lastAgentPos, agentPos);
+            ensureInView(agentPos);
+          } else {
+            updateAgentMarker(agentPos.lat, agentPos.lng);
+          }
+          lastAgentPos = agentPos;
+          updateRouteLine(agentPos, userPos);
+          lastUiUpdateAt = Date.now();
+          setLastUpdate(lastUiUpdateAt);
         }
         const confirmBtn = document.getElementById("confirmReceivedBtn");
         if (data.status === "Delivered") {
@@ -197,6 +289,7 @@
         document.getElementById("statusText").textContent = "No order found.";
         return;
       }
+      setLastUpdate(null);
       pollTracking(orderIds);
       pollTimer = setInterval(() => pollTracking(orderIds), 3000);
     })();

@@ -27,6 +27,7 @@
     .mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.82rem;color:#cbd5e1;white-space:pre-wrap;word-break:break-word}
     .tag{display:inline-flex;align-items:center;gap:.4rem;padding:.25rem .65rem;border-radius:999px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.04);color:#e2e8f0;font-size:.78rem;font-weight:700}
     .ok{border-color:rgba(16,185,129,.28);background:rgba(16,185,129,.10);color:#6ee7b7}
+    .muted{color:#94a3b8;font-size:.82rem;margin-top:.45rem}
     #map{height:270px;border-radius:12px;overflow:hidden;border:1px solid rgba(255,255,255,.1);margin-top:.8rem}
     @media (max-width: 900px){.wrap{grid-template-columns:1fr}}
   </style>
@@ -79,6 +80,7 @@
         <div class="fg">
           <label>GPS</label>
           <div class="tag" id="gpsTag">Stopped</div>
+          <div class="muted" id="gpsMeta">—</div>
         </div>
       </div>
 
@@ -106,6 +108,9 @@
   <script>
     let watchId = null;
     let lastPos = null;
+    let lastAccuracy = null;
+    let lastSentAt = 0;
+    let lastSentPos = null;
     let map = null;
     let agentMarker = null;
     let userMarker = null;
@@ -165,6 +170,24 @@
       const tag = document.getElementById("gpsTag");
       tag.textContent = running ? "Running" : "Stopped";
       tag.className = running ? "tag ok" : "tag";
+    }
+
+    function setGpsMeta(txt) {
+      const el = document.getElementById("gpsMeta");
+      if (el) el.textContent = txt || "—";
+    }
+
+    function haversineMeters(a, b) {
+      if (!a || !b) return null;
+      const R = 6371000;
+      const dLat = (b.lat - a.lat) * Math.PI / 180;
+      const dLng = (b.lng - a.lng) * Math.PI / 180;
+      const lat1 = a.lat * Math.PI / 180;
+      const lat2 = b.lat * Math.PI / 180;
+      const s1 = Math.sin(dLat / 2);
+      const s2 = Math.sin(dLng / 2);
+      const h = s1 * s1 + Math.cos(lat1) * Math.cos(lat2) * s2 * s2;
+      return 2 * R * Math.asin(Math.min(1, Math.sqrt(h)));
     }
 
     async function api(path, body) {
@@ -236,7 +259,7 @@
       return document.getElementById("orderIds").value.trim();
     }
 
-    async function sendUpdate(lat, lng) {
+    async function sendUpdate(lat, lng, accuracy) {
       const orderIds = getOrderIds();
       const status = document.getElementById("status").value;
       if (!orderIds) {
@@ -250,7 +273,7 @@
         if (s === "Delivered") return "DELIVERED";
         return "ON_THE_WAY";
       };
-      const payload = { orderId: parseInt(orderIds, 10), status: mapStatus(status), lat, lng };
+      const payload = { orderId: parseInt(orderIds, 10), status: mapStatus(status), lat, lng, accuracy };
       try {
         const data = await api("/api/delivery/update", payload);
         setLog({ sent: payload, response: data });
@@ -265,7 +288,7 @@
         setLog("No GPS position yet. Start GPS or allow location permission.");
         return;
       }
-      await sendUpdate(lastPos.lat, lastPos.lng);
+      await sendUpdate(lastPos.lat, lastPos.lng, lastAccuracy);
     }
 
     function startGps() {
@@ -277,17 +300,33 @@
       setGpsRunning(true);
       watchId = navigator.geolocation.watchPosition(async (pos) => {
         lastPos = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-        await sendUpdate(lastPos.lat, lastPos.lng);
+        lastAccuracy = Number.isFinite(pos.coords.accuracy) ? Math.round(pos.coords.accuracy) : null;
+        setGpsMeta(`Accuracy: ${lastAccuracy != null ? lastAccuracy + "m" : "—"}`);
+
+        const now = Date.now();
+        const movedM = lastSentPos ? haversineMeters(lastSentPos, lastPos) : null;
+        const minIntervalMs = 2500;
+        const minMoveM = 15;
+        const shouldSendByTime = (now - lastSentAt) >= minIntervalMs;
+        const shouldSendByMove = movedM != null && movedM >= minMoveM;
+        if (!lastSentAt || shouldSendByTime || shouldSendByMove) {
+          await sendUpdate(lastPos.lat, lastPos.lng, lastAccuracy);
+          lastSentAt = now;
+          lastSentPos = { ...lastPos };
+        }
       }, (err) => {
         setLog("GPS error: " + err.message);
         stopGps();
-      }, { enableHighAccuracy: true, maximumAge: 2000, timeout: 10000 });
+      }, { enableHighAccuracy: true, maximumAge: 6000, timeout: 12000 });
     }
 
     function stopGps() {
       if (watchId != null) navigator.geolocation.clearWatch(watchId);
       watchId = null;
       setGpsRunning(false);
+      setGpsMeta("—");
+      lastSentAt = 0;
+      lastSentPos = null;
     }
 
     async function markDelivered() {
